@@ -43,7 +43,7 @@ export function WelcomePage() {
         )}
       </div>
 
-      {welcomeMessage.isComplete && (
+      {currentPhase === 'second' && welcomeMessage.isComplete && (
         <div className="navigation-hint fade-in">
           <p>Press any key to continue...</p>
         </div>
