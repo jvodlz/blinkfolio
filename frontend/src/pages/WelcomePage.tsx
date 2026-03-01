@@ -1,53 +1,56 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTypingAnimation } from '../hooks/useTypingAnimation';
+import { Game } from '../game/Game';
 import './WelcomePage.css';
 
 export function WelcomePage() {
-  const [currentPhase, setCurrentPhase] = useState<'first' | 'second'>('first');
+  const [messageIndex, setMessageIndex] = useState(0);
 
-  const greetingMessage = useTypingAnimation('Hello, my name is James', {
+  const messages = [
+    'Hello, my name is James',
+    'Welcome to one of my creative spaces',
+  ];
+
+  const currentMessage = useTypingAnimation(messages[messageIndex], {
     typingSpeed: 80,
-    startDelay: 500,
+    startDelay: messageIndex === 0 ? 500 : 300,
   });
 
-  const welcomeMessage = useTypingAnimation(
-    currentPhase === 'second' ? 'Welcome to one of my creative spaces' : '',
-    {
-      typingSpeed: 80,
-      startDelay: 300,
-    }
-  );
-
+  // Loop messages
   useEffect(() => {
-    if (greetingMessage.isComplete && currentPhase === 'first') {
+    if (currentMessage.isComplete) {
       const timeout = setTimeout(() => {
-        setCurrentPhase('second');
+        setMessageIndex((prev) => (prev + 1) % messages.length);
       }, 2000);
+
       return () => clearTimeout(timeout);
     }
-  }, [greetingMessage.isComplete, currentPhase]);
+  }, [currentMessage.isComplete, messages.length]);
+
+  const handleNavigate = useCallback(() => {
+    alert('Navigation triggered! (Will go to main page)');
+  }, []);
 
   return (
-    <div className="welcome-page">
-      <div className="typing-container">
-        {currentPhase === 'first' && (
-          <h1 className="typing-text fade-in">
-            {greetingMessage.displayedText}
-          </h1>
-        )}
-
-        {currentPhase === 'second' && (
-          <h1 className="typing-text fade-in">
-            {welcomeMessage.displayedText}
-          </h1>
-        )}
+    <div className={`welcome-page main-palette`}>
+      {/* Game layer. Renders once, stays mounted */}
+      <div className="game-container">
+        <Game onNavigate={handleNavigate} />
       </div>
 
-      {currentPhase === 'second' && welcomeMessage.isComplete && (
-        <div className="navigation-hint fade-in">
-          <p>Press any key to continue...</p>
+      {/* Typing messages */}
+      <div className="typing-container">
+        <div className="content-wrapper">
+          <h1 className="typing-text fade-in">
+            {currentMessage.displayedText}
+          </h1>
         </div>
-      )}
+      </div>
+
+      {/* Navigation hint */}
+      <div className="navigation-hint">
+        <p>Press SPACE or walk right →</p>
+      </div>
     </div>
   );
 }

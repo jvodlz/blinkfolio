@@ -17,7 +17,7 @@ export function useTypingAnimation(
   const [charIndex, setCharIndex] = useState(0);
   const [prevText, setPrevText] = useState(text);
 
-  // Reset when text prop changes (React-approved pattern)
+  // Reset when text prop changes
   if (text !== prevText) {
     setPrevText(text);
     setCharIndex(0);
@@ -30,7 +30,7 @@ export function useTypingAnimation(
       return;
     }
 
-    // Determine delay: startDelay for first char, typingSpeed for rest
+    // StartDelay for first char, typingSpeed for rest
     const delay = charIndex === 0 ? startDelay : typingSpeed;
 
     const timer = setTimeout(() => {
@@ -40,7 +40,6 @@ export function useTypingAnimation(
     return () => clearTimeout(timer);
   }, [text, charIndex, typingSpeed, startDelay]);
 
-  // Calculate derived values during render
   const displayedText = text.slice(0, charIndex);
   const isComplete = !text || charIndex >= text.length;
 
