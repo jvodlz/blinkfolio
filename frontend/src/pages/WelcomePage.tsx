@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTypingAnimation } from '../hooks/useTypingAnimation';
 import { Game } from '../game/Game';
+import { useNavigate } from 'react-router-dom';
 import './WelcomePage.css';
 
 export function WelcomePage() {
   const [messageIndex, setMessageIndex] = useState(0);
+  const navigate = useNavigate();
 
   const messages = [
     'Hello, my name is James',
@@ -28,8 +30,8 @@ export function WelcomePage() {
   }, [currentMessage.isComplete, messages.length]);
 
   const handleNavigate = useCallback(() => {
-    alert('Navigation triggered! (Will go to main page)');
-  }, []);
+    navigate('/main');
+  }, [navigate]);
 
   return (
     <div className={`welcome-page main-palette`}>
