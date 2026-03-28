@@ -15,8 +15,8 @@ vi.mock('phaser', () => ({
       add = { rectangle: vi.fn() };
       cameras = { main: { width: 800, height: 600 } };
       scale = { on: vi.fn() };
-    },
-  },
+    }
+  }
 }));
 
 describe('MainScene', () => {
@@ -30,7 +30,7 @@ describe('MainScene', () => {
     expect(scene.scene.key).toBe('MainScene');
   });
 
-  it('should initialize with onNavigateBack callback', () => {
+  it('should initialise with onNavigateBack callback', () => {
     const mockCallback = vi.fn();
     scene.init({ onNavigateBack: mockCallback });
 

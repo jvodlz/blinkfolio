@@ -1,6 +1,16 @@
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Game } from '../game/Game';
+import { MainScene } from '../game/scenes/MainScene';
 import './MainPage.css';
 
 export function MainPage() {
+  const navigate = useNavigate();
+
+  const handleNavigateBack = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
   return (
     <div className="main-page main-palette" data-testid="main-page">
       <div className="content-area">
@@ -56,7 +66,11 @@ export function MainPage() {
 
       {/* Game render layer */}
       <div className="game-layer" data-testid="game-layer">
-        {/* Game canvas here */}
+        <Game
+          scene={MainScene}
+          sceneKey="MainScene"
+          onNavigateBack={handleNavigateBack}
+        />
       </div>
     </div>
   );

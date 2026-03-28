@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTypingAnimation } from '../hooks/useTypingAnimation';
 import { Game } from '../game/Game';
+import { WelcomeScene } from '../game/scenes/WelcomeScene';
 import { useNavigate } from 'react-router-dom';
 import './WelcomePage.css';
 
@@ -37,7 +38,11 @@ export function WelcomePage() {
     <div className={`welcome-page main-palette`}>
       {/* Game layer. Renders once, stays mounted */}
       <div className="game-container">
-        <Game onNavigate={handleNavigate} />
+        <Game
+          scene={WelcomeScene}
+          sceneKey="WelcomeScene"
+          onNavigate={handleNavigate}
+        />
       </div>
 
       {/* Typing messages */}
