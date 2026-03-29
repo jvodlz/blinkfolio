@@ -14,7 +14,7 @@ export function MainPage() {
   return (
     <div className="main-page main-palette" data-testid="main-page">
       <div className="content-area">
-        <section className="content-section" data-testid="about-sectoin">
+        <section className="content-section" data-testid="about-section">
           <h2>About Me</h2>
           <ul>
             <li>

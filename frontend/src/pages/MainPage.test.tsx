@@ -27,14 +27,14 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('MainPage', () => {
   it('should render the main page container', () => {
     renderWithRouter(<MainPage />);
-    
+
     const mainPage = screen.getByTestId('main-page');
     expect(mainPage).toBeInTheDocument();
   });
 
   it('should render three content sections', () => {
     renderWithRouter(<MainPage />);
-    
+
     expect(screen.getByText('About Me')).toBeInTheDocument();
     expect(screen.getByText('Skills')).toBeInTheDocument();
     expect(screen.getByText('Interests')).toBeInTheDocument();
@@ -42,21 +42,21 @@ describe('MainPage', () => {
 
   it('should have game layer container', () => {
     renderWithRouter(<MainPage />);
-    
+
     const gameLayer = screen.getByTestId('game-layer');
     expect(gameLayer).toBeInTheDocument();
   });
 
   it('should render mocked game component', () => {
     renderWithRouter(<MainPage />);
-    
+
     const mockedGame = screen.getByTestId('mocked-game');
     expect(mockedGame).toBeInTheDocument();
   });
 
   it('should apply main-palette class', () => {
     renderWithRouter(<MainPage />);
-    
+
     const mainPage = screen.getByTestId('main-page');
     expect(mainPage).toHaveClass('main-palette');
   });

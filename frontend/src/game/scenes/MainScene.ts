@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getPlatformRectsFromElements } from '../utils/platformSync';
 
 export class MainScene extends Phaser.Scene {
   private readonly GROUND_HEIGHT = 40;
@@ -22,6 +23,10 @@ export class MainScene extends Phaser.Scene {
 
   // Callbacks
   private onNavigateBack?: () => void;
+
+  // Content platforms
+  private platformGroup?: Phaser.Physics.Arcade.StaticGroup;
+  private platformDebugGraphics?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -91,6 +96,12 @@ export class MainScene extends Phaser.Scene {
 
     // Collision with ground
     this.physics.add.collider(this.player, this.ground);
+
+    // Sync HTML content sections to Phaser platforms
+    // Delay allows DOM to finish rendering before positions are read
+    this.time.delayedCall(100, () => {
+      this.createContentPlatforms();
+    });
 
     this.createAnimations();
     this.player.play('idle-anim');
@@ -218,6 +229,56 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  createContentPlatforms() {
+    // Clean up previously created platforms
+    if (this.platformGroup) {
+      this.platformGroup.clear(true, true);
+    } else {
+      this.platformGroup = this.physics.add.staticGroup();
+    }
+
+    // Clean up debug graphics
+    if (this.platformDebugGraphics) {
+      this.platformGroup.clear();
+    } else {
+      this.platformDebugGraphics = this.add.graphics();
+    }
+
+    // Read DOM positions of content sections
+    const sectionElements = Array.from(
+      document.querySelectorAll('[data-testid$="-section"')
+    );
+
+    const platformRects = getPlatformRectsFromElements(sectionElements);
+
+    platformRects.forEach((rect) => {
+      // Create invisible Rectangle Game Object at the card's position
+      const platform = this.add.rectangle(
+        rect.x,
+        rect.y,
+        rect.width,
+        8 // Thin collision surface - just the top edge of the card
+      );
+
+      // Give Rectangle a static physics body
+      this.physics.add.existing(platform, true);
+      this.platformGroup!.add(platform);
+
+      // Debug visualisation - draws a line to see the platform
+      this.platformDebugGraphics!.lineStyle(2, 0x00ff00, 1).strokeRect(
+        rect.x - rect.width / 2,
+        rect.y,
+        rect.width,
+        8
+      );
+    });
+
+    // Add collision between player and content platforms
+    if (this.player && this.platformGroup) {
+      this.physics.add.collider(this.player, this.platformGroup);
+    }
+  }
+
   private handleResize(gameSize: Phaser.Structs.Size) {
     const { width, height } = gameSize;
     const groundCenterY = this.getGroundCenterY(height);
@@ -256,6 +317,9 @@ export class MainScene extends Phaser.Scene {
         this.player.setVelocityY(0);
       }
     }
+
+    // Rebuild content platforms to match new DOM positions
+    this.createContentPlatforms();
   }
 
   private getGroundCenterY(height: number): number {

@@ -17,16 +17,18 @@
 }
 
 .content-area {
-  position: relative;
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
   z-index: 10;
-  padding: 2rem;
+  padding: 0 2rem;
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
   justify-content: center;
-  padding-top: 4rem;
 }
 
 .content-section {
@@ -85,7 +87,7 @@
 @media (max-width: 768px) {
   .content-area {
     flex-direction: column;
-    padding: 1rem;
+    padding: 0 1rem;
     padding-top: 2rem;
   }
 

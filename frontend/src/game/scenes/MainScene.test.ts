@@ -15,8 +15,8 @@ vi.mock('phaser', () => ({
       add = { rectangle: vi.fn() };
       cameras = { main: { width: 800, height: 600 } };
       scale = { on: vi.fn() };
-    }
-  }
+    },
+  },
 }));
 
 describe('MainScene', () => {
