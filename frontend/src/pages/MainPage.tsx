@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { Game } from '../game/Game';
 import { MainScene } from '../game/scenes/MainScene';
 import './MainPage.css';
@@ -11,9 +12,11 @@ export function MainPage() {
     navigate('/');
   }, [navigate]);
 
-  return (
-    <div className="main-page main-palette" data-testid="main-page">
-      <div className="content-area">
+  // Rendered via Portal so it escapes main-page's overflow:hidden
+  // Only the content-area div is portalled — no wrapper
+  const contentArea = (
+    <div className="content-area">
+      <div className="content-row">
         <section className="content-section" data-testid="about-section">
           <h2>About Me</h2>
           <ul>
@@ -63,8 +66,13 @@ export function MainPage() {
           </ul>
         </section>
       </div>
+    </div>
+  );
 
-      {/* Game render layer */}
+  return (
+    <div className="main-page main-palette" data-testid="main-page">
+      {createPortal(contentArea, document.body)}
+
       <div className="game-layer" data-testid="game-layer">
         <Game
           scene={MainScene}

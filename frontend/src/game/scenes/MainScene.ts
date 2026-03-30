@@ -28,6 +28,9 @@ export class MainScene extends Phaser.Scene {
   private platformGroup?: Phaser.Physics.Arcade.StaticGroup;
   private platformDebugGraphics?: Phaser.GameObjects.Graphics;
 
+  private contentAreaElement?: Element;
+  private isScrolled: boolean = false;
+
   constructor() {
     super({ key: 'MainScene' });
   }
@@ -97,6 +100,12 @@ export class MainScene extends Phaser.Scene {
     // Collision with ground
     this.physics.add.collider(this.player, this.ground);
 
+    // Initialise platform group so collider can reference it
+    this.platformGroup = this.physics.add.staticGroup();
+
+    // Register collider once. Group is populated after DOM layout settles
+    this.physics.add.collider(this.player!, this.platformGroup);
+
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
     this.time.delayedCall(100, () => {
@@ -110,6 +119,9 @@ export class MainScene extends Phaser.Scene {
 
     // Handle window resize
     this.scale.on('resize', this.handleResize, this);
+
+    // Listen for content area scroll to sync platform state
+    this.setupScrollListener();
   }
 
   private createAnimations() {
@@ -230,24 +242,25 @@ export class MainScene extends Phaser.Scene {
   }
 
   createContentPlatforms() {
-    // Clean up previously created platforms
-    if (this.platformGroup) {
-      this.platformGroup.clear(true, true);
-    } else {
-      this.platformGroup = this.physics.add.staticGroup();
-    }
+    // Clean up previously created platforms sans breaking collider reference
+    // Reuse same group object
+    this.platformGroup?.clear(true, true);
 
     // Clean up debug graphics
     if (this.platformDebugGraphics) {
-      this.platformGroup.clear();
+      this.platformDebugGraphics.clear();
     } else {
       this.platformDebugGraphics = this.add.graphics();
     }
 
     // Read DOM positions of content sections
     const sectionElements = Array.from(
-      document.querySelectorAll('[data-testid$="-section"')
+      document.querySelectorAll('[data-testid$="-section"]')
     );
+
+    if (window.innerWidth <= 768) {
+      return;
+    }
 
     const platformRects = getPlatformRectsFromElements(sectionElements);
 
@@ -262,21 +275,24 @@ export class MainScene extends Phaser.Scene {
 
       // Give Rectangle a static physics body
       this.physics.add.existing(platform, true);
+
+      // One-way platform
+      const body = platform.body as Phaser.Physics.Arcade.StaticBody;
+      body.checkCollision.down = false;
+      body.checkCollision.left = false;
+      body.checkCollision.right = false;
+
       this.platformGroup!.add(platform);
 
       // Debug visualisation - draws a line to see the platform
-      this.platformDebugGraphics!.lineStyle(2, 0x00ff00, 1).strokeRect(
+      this.platformDebugGraphics!.lineStyle(2, 0x00ff00, 1);
+      this.platformDebugGraphics!.strokeRect(
         rect.x - rect.width / 2,
         rect.y,
         rect.width,
         8
       );
     });
-
-    // Add collision between player and content platforms
-    if (this.player && this.platformGroup) {
-      this.physics.add.collider(this.player, this.platformGroup);
-    }
   }
 
   private handleResize(gameSize: Phaser.Structs.Size) {
@@ -330,5 +346,40 @@ export class MainScene extends Phaser.Scene {
     if (this.onNavigateBack) {
       this.onNavigateBack();
     }
+  }
+
+  private setupScrollListener() {
+    this.contentAreaElement =
+      document.querySelector('.content-area') ?? undefined;
+
+    if (!this.contentAreaElement) return;
+
+    this.contentAreaElement.addEventListener(
+      'scroll',
+      this.handleContentScroll
+    );
+  }
+
+  private handleContentScroll = () => {
+    const scrollTop = this.contentAreaElement?.scrollTop ?? 0;
+    const atTop = scrollTop === 0;
+
+    if (atTop && this.isScrolled) {
+      // Rebuild platforms
+      this.isScrolled = false;
+      this.createContentPlatforms();
+    } else if (!atTop && !this.isScrolled) {
+      // Scrolled away from top -> clear platforms. Drop player to ground
+      this.isScrolled = true;
+      this.platformGroup?.clear(true, true);
+      this.platformDebugGraphics?.clear();
+    }
+  };
+
+  shutdown() {
+    this.contentAreaElement?.removeEventListener(
+      'scroll',
+      this.handleContentScroll
+    );
   }
 }

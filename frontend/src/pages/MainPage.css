@@ -1,3 +1,14 @@
+/* ============================================================
+   Design tokens
+   ============================================================ */
+:root {
+  --bg-primary: #111e1b;
+  --text-primary: #c0e3ef;
+  --accent-gold: #e3bd1f;
+  --accent-orange: #e95526;
+  --bg-gradient: linear-gradient(135deg, #111e1b 0%, #0a0f0d 100%);
+}
+
 .main-palette {
   --bg-primary: #111e1b;
   --text-primary: #c0e3ef;
@@ -6,6 +17,9 @@
   --bg-gradient: linear-gradient(135deg, #111e1b 0%, #0a0f0d 100%);
 }
 
+/* ============================================================
+   Page shell — background + game layer only
+   ============================================================ */
 .main-page {
   width: 100vw;
   height: 100vh;
@@ -16,35 +30,79 @@
   position: relative;
 }
 
+/* ============================================================
+   Content area (SCROLL CONTAINER)
+   Full viewport, pointer-events:none so Phaser gets input
+   underneath. Scroll happens here.
+   ============================================================ */
 .content-area {
-  position: absolute;
-  bottom: 80px;
+  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  color: #c0e3ef;
+
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
+  bottom: 0;
+  height: 100vh; /* explicit height gives scroll container a concrete boundary */
+
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
   z-index: 10;
-  padding: 0 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  padding-bottom: 140px;
+  pointer-events: none;
+
+  scrollbar-width: thin;
+  scrollbar-color: #e3bd1f transparent;
 }
 
+.content-area::-webkit-scrollbar {
+  width: 2px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background-color: #e3bd1f;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Content row (FLEX CONTAINER)
+   Sits inside the scroll container. Arranges cards in a row.
+   Uses min-height to push cards toward the bottom on tall screens.
+   ============================================================ */
+.content-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+  align-content: flex-end;
+
+  padding: 4em 2rem 0 2rem;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   Content section cards
+   ============================================================ */
 .content-section {
+  pointer-events: auto;
   background: rgba(192, 227, 239, 0.1);
-  border: 2px solid var(--accent-gold);
+  border: 2px solid #e3bd1f;
   border-radius: 8px;
   padding: 1.5rem;
-  min-width: 280px;
-  max-width: 350px;
-  flex: 1;
+  flex: 0 1 300px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .content-section h2 {
-  color: var(--accent-gold);
+  color: #e3bd1f;
   margin-top: 0;
   margin-bottom: 1rem;
   font-size: 1.5rem;
@@ -73,6 +131,9 @@
   border-bottom: none;
 }
 
+/* ============================================================
+   Game layer
+   ============================================================ */
 .game-layer {
   position: fixed;
   top: 0;
@@ -83,16 +144,21 @@
   pointer-events: none;
 }
 
-/* Responsive */
+/* ============================================================
+   Responsive — narrow viewports
+   ============================================================ */
+
 @media (max-width: 768px) {
-  .content-area {
+  .content-row {
     flex-direction: column;
-    padding: 0 1rem;
-    padding-top: 2rem;
+    align-content: flex-start;
+    align-items: stretch;
+    padding: 2em;
+    gap: 1rem;
   }
 
   .content-section {
-    min-width: 100%;
-    max-width: 100%;
+    flex: 0 0 auto;
+    width: 100%;
   }
 }
