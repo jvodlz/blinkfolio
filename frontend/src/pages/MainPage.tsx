@@ -1,0 +1,85 @@
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Game } from '../game/Game';
+import { MainScene } from '../game/scenes/MainScene';
+import './MainPage.css';
+
+export function MainPage() {
+  const navigate = useNavigate();
+
+  const handleNavigateBack = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
+
+  // Rendered via Portal so it escapes main-page's overflow:hidden
+  // Only the content-area div is portalled — no wrapper
+  const contentArea = (
+    <div className="content-area">
+      <div className="content-row">
+        <section className="content-section" data-testid="about-section">
+          <h2>About Me</h2>
+          <ul>
+            <li>
+              I'm a curious thinker. Most days, a developer passionate about
+              cyber security and creating experiences that blend creativity with
+              technical excellence.
+            </li>
+            <li>
+              I believe security should be baked into the design from the start,
+              not treated as an afterthought.
+            </li>
+            <li>
+              Former graduate in psychology. I enjoy stepping into the user's
+              shoes to create experiences that make them crack a smile, while
+              maintaining strict data protection standards.
+            </li>
+            <li>Sometimes, I think I am a bit of a dog whisperer.</li>
+          </ul>
+        </section>
+
+        <section className="content-section" data-testid="skills-section">
+          <h2>Skills</h2>
+          <ul>
+            <li>Full-Stack Development</li>
+            <li>Security Engineering</li>
+            <li>Systems Thinking</li>
+            <li>Metacognition</li>
+            <li>Risk Awareness</li>
+          </ul>
+        </section>
+
+        <section className="content-section" data-testid="interests-section">
+          <h2>Interests</h2>
+          <ul>
+            <li>Creative coding</li>
+            <li>
+              Cyber security. Engaging in HackTheBox and community events with
+              infosec professionals
+            </li>
+            <li>Learning foreign languages. (I'm also a language tutor)</li>
+            <li>
+              Food. The cooking, science, and the history of food. (And of
+              course, the eating)
+            </li>
+            <li>Hanging out with dogs</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="main-page main-palette" data-testid="main-page">
+      {createPortal(contentArea, document.body)}
+
+      <div className="game-layer" data-testid="game-layer">
+        <Game
+          scene={MainScene}
+          sceneKey="MainScene"
+          onNavigateBack={handleNavigateBack}
+        />
+      </div>
+    </div>
+  );
+}
