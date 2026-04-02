@@ -1,6 +1,12 @@
 import Phaser from 'phaser';
 import { getPlatformRectsFromElements } from '../utils/platformSync';
 
+const enum BrickLayout {
+  None = 'NONE',
+  LowerOnly = 'LOWER_ONLY',
+  Both = 'BOTH',
+}
+
 export class MainScene extends Phaser.Scene {
   private readonly GROUND_HEIGHT = 40;
   private readonly GROUND_OFFSET_FROM_BOTTOM = 20;
@@ -10,6 +16,17 @@ export class MainScene extends Phaser.Scene {
   private readonly PLAYER_JUMP_VELOCITY = -400;
   private readonly PLAYER_BODY_WIDTH_OFFSET = 22; // difference between sprite and collision body
   private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
+
+  // Brick platform
+  private readonly BRICK_SCALE = 2.5;
+  private readonly BRICK_NATIVE_SIZE = 16;
+  private readonly BRICK_ABOVE_CARD_OFFSET = 80;
+  private readonly BRICK_BELOW_CARD_OFFSET = 60;
+
+  // Brick breakpoint thresholds
+  private readonly BP_WIDTH_MIN = 1028;
+  private readonly BP_HEIGHT_BOTH = 947;
+  private readonly BP_HEIGHT_LOWER = 827;
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
@@ -27,6 +44,9 @@ export class MainScene extends Phaser.Scene {
   // Content platforms
   private platformGroup?: Phaser.Physics.Arcade.StaticGroup;
   private platformDebugGraphics?: Phaser.GameObjects.Graphics;
+
+  // Brick platforms
+  private brickGroup?: Phaser.Physics.Arcade.StaticGroup;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -101,15 +121,20 @@ export class MainScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.ground);
 
     // Initialise platform group so collider can reference it
-    this.platformGroup = this.physics.add.staticGroup();
-
     // Register collider once. Group is populated after DOM layout settles
+    this.platformGroup = this.physics.add.staticGroup();
     this.physics.add.collider(this.player!, this.platformGroup);
+
+    // Register brick group collider once.
+    // Clear and repopulate on resize/scroll without breaking this reference
+    this.brickGroup = this.physics.add.staticGroup();
+    this.physics.add.collider(this.player!, this.brickGroup);
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
     this.time.delayedCall(100, () => {
       this.createContentPlatforms();
+      this.createBrickPlatforms();
     });
 
     this.createAnimations();
@@ -295,6 +320,77 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
+  createBrickPlatforms() {
+    this.brickGroup?.clear(true, true);
+
+    const layout = this.getBrickLayout();
+
+    if (layout === BrickLayout.None) return;
+
+    const sectionElements = Array.from(
+      document.querySelectorAll('[data-testid$="-section"]')
+    );
+
+    if (sectionElements.length === 0) return;
+
+    const rects = sectionElements
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+
+    if (rects.length === 0) return;
+
+    const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
+    const scaledBrickSize = this.BRICK_NATIVE_SIZE * this.BRICK_SCALE;
+    const brickCount = Math.ceil(window.innerWidth / scaledBrickSize);
+
+    // Lower row
+    const belowRowY = lowestCardBottom + this.BRICK_BELOW_CARD_OFFSET;
+    this.placeBrickRow(belowRowY, brickCount, scaledBrickSize, false);
+
+    // Upper row
+    if (layout === BrickLayout.Both) {
+      const highestCardTop = Math.min(...rects.map((r) => r.top));
+      const aboveRowY = highestCardTop - this.BRICK_ABOVE_CARD_OFFSET;
+      this.placeBrickRow(aboveRowY, brickCount, scaledBrickSize, true);
+    }
+  }
+
+  /**
+   * Places single row of brick-simple tiles across the screen width
+   *
+   * @param rowY - Y position of the row in screen/Phaser space
+   * @param brickCount - no. of bricks to tile across
+   * @param scaledSize - rendered size of each brick in px (native x scale)
+   * @param oneWay - if tue, player only land on top (upper row behaviour)
+   */
+  private placeBrickRow(
+    rowY: number,
+    brickCount: number,
+    scaledSize: number,
+    oneWay: boolean
+  ) {
+    for (let i = 0; i < brickCount; i++) {
+      const brick = this.brickGroup!.create(
+        i * scaledSize + scaledSize / 2, // centreX of each tile
+        rowY,
+        'brick-simple'
+      ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
+
+      brick.setScale(this.BRICK_SCALE);
+
+      // Sync the physics body to scaled visual size
+      brick.refreshBody();
+
+      if (oneWay) {
+        // Upper row only
+        const body = brick.body as Phaser.Physics.Arcade.StaticBody;
+        body.checkCollision.down = false;
+        body.checkCollision.left = false;
+        body.checkCollision.right = false;
+      }
+    }
+  }
+
   private handleResize(gameSize: Phaser.Structs.Size) {
     const { width, height } = gameSize;
     const groundCenterY = this.getGroundCenterY(height);
@@ -336,10 +432,25 @@ export class MainScene extends Phaser.Scene {
 
     // Rebuild content platforms to match new DOM positions
     this.createContentPlatforms();
+    this.createBrickPlatforms();
   }
 
   private getGroundCenterY(height: number): number {
     return height - this.GROUND_OFFSET_FROM_BOTTOM;
+  }
+
+  /**
+   * Derives which brick platforms should exist based on viewport dimensions
+   * Called on initial load, resize, and scroll reset
+   */
+  private getBrickLayout(): BrickLayout {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    if (w <= this.BP_WIDTH_MIN) return BrickLayout.None;
+    if (h >= this.BP_HEIGHT_BOTH) return BrickLayout.Both;
+    if (h >= this.BP_HEIGHT_LOWER) return BrickLayout.LowerOnly;
+    return BrickLayout.None;
   }
 
   private navigateBack() {
@@ -368,11 +479,13 @@ export class MainScene extends Phaser.Scene {
       // Rebuild platforms
       this.isScrolled = false;
       this.createContentPlatforms();
+      this.createBrickPlatforms();
     } else if (!atTop && !this.isScrolled) {
       // Scrolled away from top -> clear platforms. Drop player to ground
       this.isScrolled = true;
       this.platformGroup?.clear(true, true);
       this.platformDebugGraphics?.clear();
+      this.brickGroup?.clear(true, true); // clear bricks on scroll away
     }
   };
 
