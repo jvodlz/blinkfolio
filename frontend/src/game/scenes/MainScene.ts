@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 import { getPlatformRectsFromElements } from '../utils/platformSync';
+import {
+  generateBrickLayout,
+  type BrickLayoutConfig,
+  type BrickRowLayout,
+} from '../utils/brickLayout';
 
 const BrickLayout = {
   None: 'NONE',
@@ -28,7 +33,7 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_SCALE = 2.5;
   private readonly BRICK_NATIVE_SIZE = 16;
   private readonly BRICK_ABOVE_CARD_OFFSET = 80;
-  private readonly BRICK_BELOW_CARD_OFFSET = 60;
+  private readonly BRICK_BELOW_CARD_OFFSET = 85;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
@@ -54,6 +59,8 @@ export class MainScene extends Phaser.Scene {
 
   // Brick platforms
   private brickGroup?: Phaser.Physics.Arcade.StaticGroup;
+  private brickLayoutConfig?: BrickLayoutConfig;
+  private brickLayoutSeed?: number;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -145,6 +152,7 @@ export class MainScene extends Phaser.Scene {
     // Delay allows DOM to finish rendering before positions are read
     this.time.delayedCall(100, () => {
       this.createContentPlatforms();
+      this.initialiseBrickLayout();
       this.createBrickPlatforms();
     });
 
@@ -331,13 +339,12 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  createBrickPlatforms() {
-    this.brickGroup?.clear(true, true);
-
-    const layout = this.getBrickLayout();
-
-    if (layout === BrickLayout.None) return;
-
+  /**
+   * Reads current card span in brick slots and generates the layout.
+   * Calls once after the first DOM layout.
+   * Stores result. Reuses same layout during resize and scroll rebuilds.
+   */
+  initialiseBrickLayout() {
     const sectionElements = Array.from(
       document.querySelectorAll('[data-testid$="-section"]')
     );
@@ -350,50 +357,118 @@ export class MainScene extends Phaser.Scene {
 
     if (rects.length === 0) return;
 
-    const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
     const scaledBrickSize = this.BRICK_NATIVE_SIZE * this.BRICK_SCALE;
-    const brickCount = Math.ceil(window.innerWidth / scaledBrickSize);
 
-    // Lower row
+    // Card span: left edge of leftmost card to right edge of rightmost card
+    // Expressed in brick slots
+    const spanLeft = Math.min(...rects.map((r) => r.left));
+    const spanRight = Math.max(...rects.map((r) => r.right));
+    const cardSpanPx = spanRight - spanLeft;
+    const cardSpanSlots = Math.floor(cardSpanPx / scaledBrickSize);
+
+    this.brickLayoutSeed = Math.floor(Math.random() * 0xffffffff);
+    this.brickLayoutConfig = generateBrickLayout(cardSpanSlots, this.brickLayoutSeed);
+  }
+
+  createBrickPlatforms() {
+    this.brickGroup?.clear(true, true);
+
+    const brickLayoutMode = this.getBrickLayout();
+    if (brickLayoutMode === BrickLayout.None) return;
+    if (!this.brickLayoutConfig) return;
+
+    const sectionElements = Array.from(
+      document.querySelectorAll('[data-testid$="-section"]')
+    );
+    if (sectionElements.length === 0) return;
+
+    const rects = sectionElements
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+
+    if (rects.length === 0) return;
+
+    const scaledBrickSize = this.BRICK_NATIVE_SIZE * this.BRICK_SCALE;
+    const spanLeft = Math.min(...rects.map((r) => r.left));
+    const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
+    const highestCardTop = Math.min(...rects.map((r) => r.top));
+
+    // Render Lower row (when layout is not None)
     const belowRowY = lowestCardBottom + this.BRICK_BELOW_CARD_OFFSET;
-    this.placeBrickRow(belowRowY, brickCount, scaledBrickSize, false);
+    this.renderBrickRow(
+      this.brickLayoutConfig.bottomRow,
+      belowRowY,
+      spanLeft,
+      scaledBrickSize,
+      false
+    );
 
-    // Upper row
-    if (layout === BrickLayout.Both) {
-      const highestCardTop = Math.min(...rects.map((r) => r.top));
+    // Render Upper row (when both rows required)
+    if (brickLayoutMode === BrickLayout.Both) {
       const aboveRowY = highestCardTop - this.BRICK_ABOVE_CARD_OFFSET;
-      this.placeBrickRow(aboveRowY, brickCount, scaledBrickSize, true);
+      this.renderBrickRow(
+        this.brickLayoutConfig.topRow,
+        aboveRowY,
+        spanLeft,
+        scaledBrickSize,
+        true
+      );
     }
   }
 
   /**
-   * Places single row of brick-simple tiles across the screen width
-   *
-   * @param rowY - Y position of the row in screen/Phaser space
-   * @param brickCount - no. of bricks to tile across
-   * @param scaledSize - rendered size of each brick in px (native x scale)
-   * @param oneWay - if tue, player only land on top (upper row behaviour)
+   * Renders a single brick row from a BrickRowLayout descriptor
+   * 
+   * Iterates over every slot in the row. Skips gap slots.
+   * Places brick-interactive for interactive slots, brick-simple for all others.
+   * 
+   * @param layout - row layout descriptor from brickLayout utility
+   * @param rowY - Y position in Phaser/screen space
+   * @param spanLeft - left edge of card span in screen px (used as row origin)
+   * @param scaledSize - rendered size of each brick tile in px
+   * @oneWay - if true, only top surface collides (upper row behaviour)
    */
-  private placeBrickRow(
+  private renderBrickRow(
+    layout: BrickRowLayout,
     rowY: number,
-    brickCount: number,
+    spanLeft: number,
     scaledSize: number,
     oneWay: boolean
   ) {
-    for (let i = 0; i < brickCount; i++) {
+    const gapSlots = new Set<number>();
+    layout.gaps.forEach((gap) => {
+      for (let i = 0; i < gap.width; i++) {
+        gapSlots.add(gap.startIndex + i);
+      }
+    });
+
+    const interactiveSlots = new Set(layout.interactiveSlots);
+    for (let i = 0; i < layout.totalSlots; i++) {
+      // Skip gap slots
+      if (gapSlots.has(i)) continue;
+
+      // Absolute slot index accounts for row's start offset within card span
+      const absoluteSlot = layout.startSlotOffset + i;
+
+      // X position: card span left edge + slot offset in px + half brick (centreX)
+      const brickX = spanLeft + absoluteSlot * scaledSize + scaledSize / 2;
+
+      const textureKey = interactiveSlots.has(i)
+        ? 'brick-interactive'
+        : 'brick-simple';
+
       const brick = this.brickGroup!.create(
-        i * scaledSize + scaledSize / 2, // centreX of each tile
+        brickX,
         rowY,
-        'brick-simple'
+        textureKey
       ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
 
       brick.setScale(this.BRICK_SCALE);
 
-      // Sync the physics body to scaled visual size
+      // Sync physics body to scaled visual size
       brick.refreshBody();
 
       if (oneWay) {
-        // Upper row only
         const body = brick.body as Phaser.Physics.Arcade.StaticBody;
         body.checkCollision.down = false;
         body.checkCollision.left = false;
@@ -401,6 +476,7 @@ export class MainScene extends Phaser.Scene {
       }
     }
   }
+
 
   private handleResize(gameSize: Phaser.Structs.Size) {
     const { width, height } = gameSize;
