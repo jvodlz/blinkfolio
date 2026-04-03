@@ -30,8 +30,10 @@ export class MainScene extends Phaser.Scene {
   private readonly PLAYER_BODY_OFFSET_Y = 16;
 
   // Brick platform
-  private readonly BRICK_SCALE = 2.5;
-  private readonly BRICK_NATIVE_SIZE = 16;
+  private readonly BRICK_SIMPLE_SCALE = 0.625;
+  private readonly BRICK_INTERACTIVE_SCALE = 2.2;
+  private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
+  private readonly BRICK_INTERACTIVE_NATIVE_SIZE = 18;
   private readonly BRICK_ABOVE_CARD_OFFSET = 80;
   private readonly BRICK_BELOW_CARD_OFFSET = 85;
 
@@ -357,7 +359,7 @@ export class MainScene extends Phaser.Scene {
 
     if (rects.length === 0) return;
 
-    const scaledBrickSize = this.BRICK_NATIVE_SIZE * this.BRICK_SCALE;
+    const scaledBrickSize = this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
 
     // Card span: left edge of leftmost card to right edge of rightmost card
     // Expressed in brick slots
@@ -388,7 +390,7 @@ export class MainScene extends Phaser.Scene {
 
     if (rects.length === 0) return;
 
-    const scaledBrickSize = this.BRICK_NATIVE_SIZE * this.BRICK_SCALE;
+    const scaledBrickSize = this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
     const spanLeft = Math.min(...rects.map((r) => r.left));
     const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
     const highestCardTop = Math.min(...rects.map((r) => r.top));
@@ -463,7 +465,10 @@ export class MainScene extends Phaser.Scene {
         textureKey
       ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
 
-      brick.setScale(this.BRICK_SCALE);
+      const scale = textureKey === 'brick-interactive'
+        ? this.BRICK_INTERACTIVE_SCALE
+        : this.BRICK_SIMPLE_SCALE;
+      brick.setScale(scale);
 
       // Sync physics body to scaled visual size
       brick.refreshBody();
