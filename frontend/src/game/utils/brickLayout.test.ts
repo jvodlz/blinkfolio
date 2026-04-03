@@ -101,11 +101,11 @@ describe('generateGaps', () => {
     });
   });
 
-  it('each gap width is 1 or 2', () => {
+  it('each gap width is 2 or 3', () => {
     const rng = createSeededRandom(55);
     const gaps = generateGaps(20, rng);
     gaps.forEach((gap) => {
-      expect([1, 2]).toContain(gap.width);
+      expect([2, 3]).toContain(gap.width);
     });
   });
 });

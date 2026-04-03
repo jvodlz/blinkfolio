@@ -122,7 +122,7 @@ export function generateGaps(
 
   while (gaps.length < gapCount && attempts < maxAttempts) {
     attempts++;
-    const gapWidth = randomInt(1, 2, rng);
+    const gapWidth = randomInt(2, 3, rng);
     const startIndex = randomInt(0, totalSlots - gapWidth - 1, rng);
 
     // Check no slots the gap would occupy is already taken
