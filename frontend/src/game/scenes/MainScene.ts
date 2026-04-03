@@ -33,7 +33,6 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_SIMPLE_SCALE = 0.625;
   private readonly BRICK_INTERACTIVE_SCALE = 2.2;
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
-  private readonly BRICK_INTERACTIVE_NATIVE_SIZE = 18;
   private readonly BRICK_ABOVE_CARD_OFFSET = 80;
   private readonly BRICK_BELOW_CARD_OFFSET = 85;
 
@@ -359,7 +358,8 @@ export class MainScene extends Phaser.Scene {
 
     if (rects.length === 0) return;
 
-    const scaledBrickSize = this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
 
     // Card span: left edge of leftmost card to right edge of rightmost card
     // Expressed in brick slots
@@ -369,7 +369,10 @@ export class MainScene extends Phaser.Scene {
     const cardSpanSlots = Math.floor(cardSpanPx / scaledBrickSize);
 
     this.brickLayoutSeed = Math.floor(Math.random() * 0xffffffff);
-    this.brickLayoutConfig = generateBrickLayout(cardSpanSlots, this.brickLayoutSeed);
+    this.brickLayoutConfig = generateBrickLayout(
+      cardSpanSlots,
+      this.brickLayoutSeed
+    );
   }
 
   createBrickPlatforms() {
@@ -390,7 +393,8 @@ export class MainScene extends Phaser.Scene {
 
     if (rects.length === 0) return;
 
-    const scaledBrickSize = this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
     const spanLeft = Math.min(...rects.map((r) => r.left));
     const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
     const highestCardTop = Math.min(...rects.map((r) => r.top));
@@ -420,10 +424,10 @@ export class MainScene extends Phaser.Scene {
 
   /**
    * Renders a single brick row from a BrickRowLayout descriptor
-   * 
+   *
    * Iterates over every slot in the row. Skips gap slots.
    * Places brick-interactive for interactive slots, brick-simple for all others.
-   * 
+   *
    * @param layout - row layout descriptor from brickLayout utility
    * @param rowY - Y position in Phaser/screen space
    * @param spanLeft - left edge of card span in screen px (used as row origin)
@@ -465,9 +469,10 @@ export class MainScene extends Phaser.Scene {
         textureKey
       ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
 
-      const scale = textureKey === 'brick-interactive'
-        ? this.BRICK_INTERACTIVE_SCALE
-        : this.BRICK_SIMPLE_SCALE;
+      const scale =
+        textureKey === 'brick-interactive'
+          ? this.BRICK_INTERACTIVE_SCALE
+          : this.BRICK_SIMPLE_SCALE;
       brick.setScale(scale);
 
       // Sync physics body to scaled visual size
@@ -481,7 +486,6 @@ export class MainScene extends Phaser.Scene {
       }
     }
   }
-
 
   private handleResize(gameSize: Phaser.Structs.Size) {
     const { width, height } = gameSize;
