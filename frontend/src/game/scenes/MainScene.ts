@@ -405,8 +405,7 @@ export class MainScene extends Phaser.Scene {
       this.brickLayoutConfig.bottomRow,
       belowRowY,
       spanLeft,
-      scaledBrickSize,
-      false
+      scaledBrickSize
     );
 
     // Render Upper row (when both rows required)
@@ -416,8 +415,7 @@ export class MainScene extends Phaser.Scene {
         this.brickLayoutConfig.topRow,
         aboveRowY,
         spanLeft,
-        scaledBrickSize,
-        true
+        scaledBrickSize
       );
     }
   }
@@ -438,8 +436,7 @@ export class MainScene extends Phaser.Scene {
     layout: BrickRowLayout,
     rowY: number,
     spanLeft: number,
-    scaledSize: number,
-    oneWay: boolean
+    scaledSize: number
   ) {
     const gapSlots = new Set<number>();
     layout.gaps.forEach((gap) => {
@@ -477,13 +474,6 @@ export class MainScene extends Phaser.Scene {
 
       // Sync physics body to scaled visual size
       brick.refreshBody();
-
-      if (oneWay) {
-        const body = brick.body as Phaser.Physics.Arcade.StaticBody;
-        body.checkCollision.down = false;
-        body.checkCollision.left = false;
-        body.checkCollision.right = false;
-      }
     }
   }
 
