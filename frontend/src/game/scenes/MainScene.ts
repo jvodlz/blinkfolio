@@ -33,12 +33,12 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_SIMPLE_SCALE = 0.625;
   private readonly BRICK_INTERACTIVE_SCALE = 2.2;
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
-  private readonly BRICK_ABOVE_CARD_OFFSET = 80;
+  private readonly BRICK_ABOVE_CARD_OFFSET = 70;
   private readonly BRICK_BELOW_CARD_OFFSET = 85;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
-  private readonly BP_HEIGHT_BOTH = 947;
+  private readonly BP_HEIGHT_BOTH = 945;
   private readonly BP_HEIGHT_LOWER = 827;
 
   private player?: Phaser.Physics.Arcade.Sprite;
@@ -127,8 +127,8 @@ export class MainScene extends Phaser.Scene {
     );
     this.physics.add.existing(this.ground, true);
 
-    // Create player at left side of screen
-    this.player = this.physics.add.sprite(150, -100, 'idle');
+    const startX = Phaser.Math.Between(width * 0.25, width * 0.75);
+    this.player = this.physics.add.sprite(startX, -100, 'idle');
     this.player.setScale(this.PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
 
