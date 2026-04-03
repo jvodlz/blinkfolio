@@ -1,21 +1,28 @@
 import Phaser from 'phaser';
 import { getPlatformRectsFromElements } from '../utils/platformSync';
 
-const enum BrickLayout {
-  None = 'NONE',
-  LowerOnly = 'LOWER_ONLY',
-  Both = 'BOTH',
-}
+const BrickLayout = {
+  None: 'NONE',
+  LowerOnly: 'LOWER_ONLY',
+  Both: 'BOTH',
+} as const;
+
+type BrickLayout = (typeof BrickLayout)[keyof typeof BrickLayout];
 
 export class MainScene extends Phaser.Scene {
   private readonly GROUND_HEIGHT = 40;
   private readonly GROUND_OFFSET_FROM_BOTTOM = 20;
 
+  // Player
   private readonly PLAYER_SCALE = 2.5;
   private readonly PLAYER_SPEED = 200;
   private readonly PLAYER_JUMP_VELOCITY = -400;
-  private readonly PLAYER_BODY_WIDTH_OFFSET = 22; // difference between sprite and collision body
   private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
+
+  private readonly PLAYER_BODY_WIDTH = 18;
+  private readonly PLAYER_BODY_HEIGHT = 16;
+  private readonly PLAYER_BODY_OFFSET_X = 7;
+  private readonly PLAYER_BODY_OFFSET_Y = 16;
 
   // Brick platform
   private readonly BRICK_SCALE = 2.5;
@@ -116,6 +123,10 @@ export class MainScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(150, -100, 'idle');
     this.player.setScale(this.PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
+
+    // Shrink physics body to match visible player
+    this.player.setBodySize(this.PLAYER_BODY_WIDTH, this.PLAYER_BODY_HEIGHT);
+    this.player.setOffset(this.PLAYER_BODY_OFFSET_X, this.PLAYER_BODY_OFFSET_Y);
 
     // Collision with ground
     this.physics.add.collider(this.player, this.ground);
@@ -245,7 +256,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Keep player in horizontal bounds
-    const bodyWidth = this.player.displayWidth - this.PLAYER_BODY_WIDTH_OFFSET;
+    const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
     const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
     const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
 
@@ -408,8 +419,7 @@ export class MainScene extends Phaser.Scene {
 
     // Keep player in bounds
     if (this.player) {
-      const bodyWidth =
-        this.player.displayWidth - this.PLAYER_BODY_WIDTH_OFFSET;
+      const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
       const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
       const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
 
