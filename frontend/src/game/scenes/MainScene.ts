@@ -10,6 +10,7 @@ import {
   markCoolingDown,
   clearCooldown,
 } from '../utils/brickCooldown';
+import { randomSpawnType, randomDirection } from '../utils/spawnUtils';
 
 const BrickLayout = {
   None: 'NONE',
@@ -43,6 +44,10 @@ export class MainScene extends Phaser.Scene {
 
   // Items
   private readonly FLOWER_SCALE = 2;
+
+  // Enemy
+  private readonly ENEMY_SCALE = 2.5;
+  private readonly ENEMY_SPEED = 90;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
@@ -173,6 +178,9 @@ export class MainScene extends Phaser.Scene {
     this.flowerGroup = this.physics.add.staticGroup();
 
     this.enemyGroup = this.physics.add.group();
+    this.physics.add.collider(this.enemyGroup, this.ground!);
+    this.physics.add.collider(this.enemyGroup, this.platformGroup!);
+    this.physics.add.collider(this.enemyGroup, this.brickGroup!);
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
@@ -309,6 +317,14 @@ export class MainScene extends Phaser.Scene {
       this.player.y = groundY - this.player.displayHeight / 2;
       this.player.setVelocityY(0);
     }
+
+    // Destroy enemies that walked off screen
+    this.enemyGroup?.getChildren().forEach((child) => {
+      const enemy = child as Phaser.Physics.Arcade.Sprite;
+      if (enemy.x < -100 || enemy.x > width + 100) {
+        enemy.destroy();
+      }
+    });
   }
 
   createContentPlatforms() {
@@ -529,6 +545,39 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * Spawn an enemy
+   *
+   * Enemy pauses 1s then walks in a random direction.
+   * Destroyed in update() when it exits the viewport
+   *
+   * @param brick - the interactive brick that was hit
+   */
+  private spawnEnemy(brick: Phaser.GameObjects.Image): void {
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const enemy = this.enemyGroup!.create(
+      brick.x,
+      brick.y - scaledBrickSize,
+      'enemy'
+    ) as Phaser.Physics.Arcade.Sprite;
+
+    enemy.setScale(this.ENEMY_SCALE);
+    enemy.setGravityY(0);
+    enemy.setVelocityX(0);
+    enemy.play('enemy-walk');
+
+    const direction = randomDirection(Math.random);
+
+    this.time.delayedCall(1000, () => {
+      if (!enemy.active) return;
+      const velocity =
+        direction === 'left' ? -this.ENEMY_SPEED : this.ENEMY_SPEED;
+      enemy.setVelocityX(velocity);
+      enemy.setFlipX(direction === 'left');
+    });
+  }
+
+  /**
    * Fired by overlap check between player and brickGroup on every contact frame.
    *
    * On valid upward hit, ALL contacted bricks are marked cooling down
@@ -554,9 +603,11 @@ export class MainScene extends Phaser.Scene {
     brickImage.setTexture('brick-interactive-hit');
 
     // 50/50 chance: spawn flower or enemy
-    const spawnFlower = Math.random() < 0.5;
-    if (spawnFlower) {
+    const spawnType = randomSpawnType(Math.random);
+    if (spawnType === 'flower') {
       this.spawnFlower(brickImage);
+    } else {
+      this.spawnEnemy(brickImage);
     }
 
     this.time.delayedCall(8000, () => {
