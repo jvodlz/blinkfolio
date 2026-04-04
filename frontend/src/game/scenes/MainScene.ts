@@ -68,6 +68,9 @@ export class MainScene extends Phaser.Scene {
   private brickLayoutConfig?: BrickLayoutConfig;
   private brickLayoutSeed?: number;
 
+  // Flower
+  private flowerGroup?: Phaser.Physics.Arcade.StaticGroup;
+
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
 
@@ -160,6 +163,8 @@ export class MainScene extends Phaser.Scene {
       undefined,
       this
     );
+
+    this.flowerGroup = this.physics.add.staticGroup();
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
