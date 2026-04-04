@@ -43,7 +43,7 @@ describe('MainScene', () => {
       image: vi.fn(),
     };
 
-    scene.load = mockLoad as any;
+    scene.load = mockLoad as unknown as typeof scene.load;
     scene.preload();
 
     // Player

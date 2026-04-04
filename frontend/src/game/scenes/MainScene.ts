@@ -29,10 +29,10 @@ export class MainScene extends Phaser.Scene {
   private readonly PLAYER_JUMP_VELOCITY = -400;
   private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
 
-  private readonly PLAYER_BODY_WIDTH = 18;
-  private readonly PLAYER_BODY_HEIGHT = 16;
-  private readonly PLAYER_BODY_OFFSET_X = 7;
-  private readonly PLAYER_BODY_OFFSET_Y = 16;
+  private readonly PLAYER_BODY_WIDTH = 10;
+  private readonly PLAYER_BODY_HEIGHT = 15;
+  private readonly PLAYER_BODY_OFFSET_X = 11;
+  private readonly PLAYER_BODY_OFFSET_Y = 17;
 
   // Brick platform
   private readonly BRICK_SIMPLE_SCALE = 0.625;
@@ -40,7 +40,6 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
   private readonly BRICK_ABOVE_CARD_OFFSET = 70;
   private readonly BRICK_BELOW_CARD_OFFSET = 85;
-  private readonly BRICK_HIT_TOLERANCE = 8;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
@@ -157,7 +156,7 @@ export class MainScene extends Phaser.Scene {
     this.physics.add.collider(
       this.player!,
       this.brickGroup,
-      this.handleBrickHit,
+      this.handleBrickHit as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
       this
     );
@@ -493,11 +492,10 @@ export class MainScene extends Phaser.Scene {
   /**
    * Fired by overlap check between player and brickGroup on every contact frame.
    *
-   * Detects upward hit by checking:
-   *   - Player is moving upward (velocity.y < 0)
-   *   - Player top edge is within tolerance of brick bottom edge
-   *   - Brick is interactive
-   *   - Brick is not already cooling down
+   * On valid upward hit, ALL contacted bricks are marked cooling down
+   * Prevents brick misidentification
+   * Only brick-interactive gets texture swap
+   * brick-simple cooldowns persist until next rebuild
    */
   private handleBrickHit(
     player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
@@ -510,10 +508,10 @@ export class MainScene extends Phaser.Scene {
 
     const brickImage = brick as Phaser.GameObjects.Image;
 
-    if (brickImage.texture.key !== 'brick-interactive') return;
     if (isCoolingDown(brickImage)) return;
-
     markCoolingDown(brickImage);
+    if (brickImage.texture.key !== 'brick-interactive') return;
+
     brickImage.setTexture('brick-interactive-hit');
 
     this.time.delayedCall(8000, () => {
