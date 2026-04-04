@@ -5,6 +5,11 @@ import {
   type BrickLayoutConfig,
   type BrickRowLayout,
 } from '../utils/brickLayout';
+import {
+  isCoolingDown,
+  markCoolingDown,
+  clearCooldown,
+} from '../utils/brickCooldown';
 
 const BrickLayout = {
   None: 'NONE',
@@ -24,10 +29,10 @@ export class MainScene extends Phaser.Scene {
   private readonly PLAYER_JUMP_VELOCITY = -400;
   private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
 
-  private readonly PLAYER_BODY_WIDTH = 18;
-  private readonly PLAYER_BODY_HEIGHT = 16;
-  private readonly PLAYER_BODY_OFFSET_X = 7;
-  private readonly PLAYER_BODY_OFFSET_Y = 16;
+  private readonly PLAYER_BODY_WIDTH = 10;
+  private readonly PLAYER_BODY_HEIGHT = 15;
+  private readonly PLAYER_BODY_OFFSET_X = 11;
+  private readonly PLAYER_BODY_OFFSET_Y = 17;
 
   // Brick platform
   private readonly BRICK_SIMPLE_SCALE = 0.625;
@@ -146,8 +151,15 @@ export class MainScene extends Phaser.Scene {
 
     // Register brick group collider once.
     // Clear and repopulate on resize/scroll without breaking this reference
+    // Handles the bonk
     this.brickGroup = this.physics.add.staticGroup();
-    this.physics.add.collider(this.player!, this.brickGroup);
+    this.physics.add.collider(
+      this.player!,
+      this.brickGroup,
+      this.handleBrickHit as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
@@ -475,6 +487,38 @@ export class MainScene extends Phaser.Scene {
       // Sync physics body to scaled visual size
       brick.refreshBody();
     }
+  }
+
+  /**
+   * Fired by overlap check between player and brickGroup on every contact frame.
+   *
+   * On valid upward hit, ALL contacted bricks are marked cooling down
+   * Prevents brick misidentification
+   * Only brick-interactive gets texture swap
+   * brick-simple cooldowns persist until next rebuild
+   */
+  private handleBrickHit(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    brick: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ) {
+    const playerBody = player.body as Phaser.Physics.Arcade.Body;
+
+    // blocked.up is set by Phaser post-resolution
+    if (!playerBody.blocked.up) return;
+
+    const brickImage = brick as Phaser.GameObjects.Image;
+
+    if (isCoolingDown(brickImage)) return;
+    markCoolingDown(brickImage);
+    if (brickImage.texture.key !== 'brick-interactive') return;
+
+    brickImage.setTexture('brick-interactive-hit');
+
+    this.time.delayedCall(8000, () => {
+      if (!brickImage.active) return;
+      clearCooldown(brickImage);
+      brickImage.setTexture('brick-interactive');
+    });
   }
 
   private handleResize(gameSize: Phaser.Structs.Size) {
