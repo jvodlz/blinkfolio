@@ -74,6 +74,9 @@ export class MainScene extends Phaser.Scene {
   // Flower
   private flowerGroup?: Phaser.Physics.Arcade.StaticGroup;
 
+  // Enemy
+  private enemyGroup?: Phaser.Physics.Arcade.Group;
+
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
 
@@ -168,6 +171,8 @@ export class MainScene extends Phaser.Scene {
     );
 
     this.flowerGroup = this.physics.add.staticGroup();
+
+    this.enemyGroup = this.physics.add.group();
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
