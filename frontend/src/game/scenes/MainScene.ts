@@ -41,6 +41,9 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_ABOVE_CARD_OFFSET = 70;
   private readonly BRICK_BELOW_CARD_OFFSET = 85;
 
+  // Items
+  private readonly FLOWER_SCALE = 2;
+
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
   private readonly BP_HEIGHT_BOTH = 945;
@@ -495,6 +498,32 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * Spawn a flower
+   *
+   * Flower is static - purely decorative
+   * Despawns after brick cooldown duration via its own delayedCall
+   *
+   * @param brick - the interactive brick that was hit
+   */
+  private spawnFlower(brick: Phaser.GameObjects.Image): void {
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const flower = this.flowerGroup!.create(
+      brick.x,
+      brick.y - scaledBrickSize,
+      'flower'
+    ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
+
+    flower.setScale(this.FLOWER_SCALE);
+    flower.refreshBody();
+
+    this.time.delayedCall(8000, () => {
+      if (!flower.active) return;
+      flower.destroy();
+    });
+  }
+
+  /**
    * Fired by overlap check between player and brickGroup on every contact frame.
    *
    * On valid upward hit, ALL contacted bricks are marked cooling down
@@ -518,6 +547,12 @@ export class MainScene extends Phaser.Scene {
     if (brickImage.texture.key !== 'brick-interactive') return;
 
     brickImage.setTexture('brick-interactive-hit');
+
+    // 50/50 chance: spawn flower or enemy
+    const spawnFlower = Math.random() < 0.5;
+    if (spawnFlower) {
+      this.spawnFlower(brickImage);
+    }
 
     this.time.delayedCall(8000, () => {
       if (!brickImage.active) return;
