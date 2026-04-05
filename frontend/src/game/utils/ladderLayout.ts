@@ -12,6 +12,13 @@ export const LADDER_NATIVE_SIZE = 18;
 export const LADDER_SCALE = 2.2;
 export const LADDER_RENDERED_SIZE = LADDER_NATIVE_SIZE * LADDER_SCALE;
 
+// Custom ladder
+export const LADDER_RAIL_WIDTH = 7;
+export const LADDER_RUNG_HEIGHT = 5;
+export const LADDER_RUNG_SPACING = 18;
+export const LADDER_COLOUR_RAIL = 0x8b5a2b;
+export const LADDER_COLOUR_RUNG = 0x8b5a2b;
+
 // Viewport threshold
 export const LADDER_MIN_WIDTH = 1210;
 export const LADDER_MIN_HEIGHT = 195;

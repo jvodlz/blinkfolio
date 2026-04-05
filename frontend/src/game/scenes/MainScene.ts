@@ -13,13 +13,17 @@ import {
 import { randomSpawnType, randomDirection } from '../utils/spawnUtils';
 import {
   generateLadderDecision,
+  resolveLadderLayout,
   type LadderDecision,
   type CardRect,
   LADDER_MIN_WIDTH,
   LADDER_MIN_HEIGHT,
-  LADDER_SCALE,
   LADDER_RENDERED_SIZE,
-  resolveLadderLayout,
+  LADDER_RAIL_WIDTH,
+  LADDER_RUNG_HEIGHT,
+  LADDER_COLOUR_RAIL,
+  LADDER_COLOUR_RUNG,
+  LADDER_RUNG_SPACING,
 } from '../utils/ladderLayout';
 import { createSeededRandom } from '../utils/brickLayout';
 
@@ -141,10 +145,6 @@ export class MainScene extends Phaser.Scene {
       'brick-interactive-hit',
       '/assets/tiles/brick-interactive-hit.png'
     );
-
-    // Ladder
-    this.load.image('ladder-top', '/assets/tiles/ladder-top.png');
-    this.load.image('ladder-body', '/assets/tiles/ladder-body.png');
 
     // Item
     this.load.image('flower', '/assets/items/flower.png');
@@ -516,6 +516,7 @@ export class MainScene extends Phaser.Scene {
   /**
    * Renders ladder layout fom live DOM positions.
    *
+   * Drawn using Phaser Graphics
    * Clears any existing ladder
    * Called on initial load, resize, and scroll reset
    */
@@ -528,6 +529,7 @@ export class MainScene extends Phaser.Scene {
     const sectionElements = Array.from(
       document.querySelectorAll('[data-testid$="-section"]')
     );
+
     if (sectionElements.length < 3) return;
 
     const rects = sectionElements
@@ -550,31 +552,46 @@ export class MainScene extends Phaser.Scene {
       cardRects,
       groundTopY
     );
-    const { x, topY, bottomY, tileCount } = layout;
+    const { x, topY, bottomY } = layout;
 
+    const ladderWidth = LADDER_RENDERED_SIZE;
+    const ladderLeft = x - ladderWidth / 2;
+    const ladderHeight = bottomY - topY;
+
+    const graphics = this.add.graphics();
     this.ladderImageGroup = this.add.group();
+    this.ladderImageGroup.add(graphics);
 
-    const topCap = this.add.image(x, topY, 'ladder-top');
-    topCap.setScale(LADDER_SCALE);
-    this.ladderImageGroup.add(topCap);
+    // Draw left rail
+    graphics.fillStyle(LADDER_COLOUR_RAIL, 1);
+    graphics.fillRect(ladderLeft, topY, LADDER_RAIL_WIDTH, ladderHeight);
 
-    // Ladder body stacked downward frop top cap
-    for (let i = 0; i < tileCount; i++) {
-      const tileY = topY + LADDER_RENDERED_SIZE / 2 + i * LADDER_RENDERED_SIZE;
-      const tile = this.add.image(x, tileY, 'ladder-body');
-      tile.setScale(LADDER_SCALE);
-      this.ladderImageGroup.add(tile);
+    // Draw right rail
+    graphics.fillRect(
+      ladderLeft + ladderWidth - LADDER_RAIL_WIDTH,
+      topY,
+      LADDER_RAIL_WIDTH,
+      ladderHeight
+    );
+
+    // Draw ladder rungs. Evenly spaced
+    graphics.fillStyle(LADDER_COLOUR_RUNG, 1);
+    let rungY = topY + LADDER_RUNG_SPACING;
+    const lastRungY = bottomY - LADDER_RUNG_HEIGHT - LADDER_RUNG_SPACING / 3;
+    while (rungY <= lastRungY) {
+      graphics.fillRect(
+        ladderLeft + LADDER_RAIL_WIDTH,
+        rungY,
+        ladderWidth - LADDER_RAIL_WIDTH * 2,
+        LADDER_RUNG_HEIGHT
+      );
+      rungY += LADDER_RUNG_SPACING;
     }
 
-    // Invisible zone. Full ladder height for overlap detection
+    // Invisible spacing. For overlap detection
     const zoneHeight = bottomY - topY;
     const zoneCenterY = topY + zoneHeight / 2;
-    this.ladderZone = this.add.zone(
-      x,
-      zoneCenterY,
-      LADDER_RENDERED_SIZE,
-      zoneHeight
-    );
+    this.ladderZone = this.add.zone(x, zoneCenterY, ladderWidth, zoneHeight);
     this.physics.add.existing(this.ladderZone, true);
     this.physics.add.overlap(this.player!, this.ladderZone);
   }
