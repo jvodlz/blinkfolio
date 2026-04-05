@@ -525,6 +525,13 @@ export class MainScene extends Phaser.Scene {
 
       // Sync physics body to scaled visual size
       brick.refreshBody();
+
+      // Override physics body to 40x40 to match simple-bricks exactly
+      // Offset centres the 40px body withing the 39.6px visual
+      if (textureKey === 'brick-interactive') {
+        const body = brick.body as Phaser.Physics.Arcade.StaticBody;
+        body.setSize(40, 40, true);
+      }
     }
   }
 
