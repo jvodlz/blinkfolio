@@ -40,7 +40,7 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_INTERACTIVE_SCALE = 2.2;
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
   private readonly BRICK_ABOVE_CARD_OFFSET = 70;
-  private readonly BRICK_BELOW_CARD_OFFSET = 85;
+  private readonly BRICK_ABOVE_GROUND_OFFSET = 75;
 
   // Items
   private readonly FLOWER_SCALE = 2;
@@ -447,11 +447,13 @@ export class MainScene extends Phaser.Scene {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
     const spanLeft = Math.min(...rects.map((r) => r.left));
-    const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
     const highestCardTop = Math.min(...rects.map((r) => r.top));
 
     // Render Lower row (when layout is not None)
-    const belowRowY = lowestCardBottom + this.BRICK_BELOW_CARD_OFFSET;
+    // Anchored to ground platform
+    const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
+    const groundTop = groundCenterY - this.GROUND_HEIGHT / 2;
+    const belowRowY = groundTop - this.BRICK_ABOVE_GROUND_OFFSET;
     this.renderBrickRow(
       this.brickLayoutConfig.bottomRow,
       belowRowY,
