@@ -180,17 +180,7 @@ export class MainScene extends Phaser.Scene {
     this.physics.add.collider(this.enemyGroup, this.ground!);
     this.physics.add.collider(this.enemyGroup, this.platformGroup!);
 
-    this.physics.add.collider(
-      this.enemyGroup,
-      this.brickGroup!,
-      undefined,
-      (enemy, _brick) => {
-        const enemyBody = (enemy as Phaser.Physics.Arcade.Sprite)
-          .body as Phaser.Physics.Arcade.Body;
-        return enemyBody.blocked.down || enemyBody.blocked.up;
-      },
-      this
-    );
+    this.physics.add.collider(this.enemyGroup, this.brickGroup!);
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
