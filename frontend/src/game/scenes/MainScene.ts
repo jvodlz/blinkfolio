@@ -48,6 +48,10 @@ export class MainScene extends Phaser.Scene {
   // Enemy
   private readonly ENEMY_SCALE = 2.5;
   private readonly ENEMY_SPEED = 90;
+  private readonly ENEMY_BODY_WIDTH = 14;
+  private readonly ENEMY_BODY_HEIGHT = 9;
+  private readonly ENEMY_BODY_OFFSET_X = 1;
+  private readonly ENEMY_BODY_OFFSET_Y = 4;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
@@ -562,6 +566,8 @@ export class MainScene extends Phaser.Scene {
     ) as Phaser.Physics.Arcade.Sprite;
 
     enemy.setScale(this.ENEMY_SCALE);
+    enemy.setBodySize(this.ENEMY_BODY_WIDTH, this.ENEMY_BODY_HEIGHT);
+    enemy.setOffset(this.ENEMY_BODY_OFFSET_X, this.ENEMY_BODY_OFFSET_Y);
     enemy.setGravityY(0);
     enemy.setVelocityX(0);
     enemy.play('enemy-walk');
