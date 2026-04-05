@@ -11,6 +11,17 @@ import {
   clearCooldown,
 } from '../utils/brickCooldown';
 import { randomSpawnType, randomDirection } from '../utils/spawnUtils';
+import {
+  generateLadderDecision,
+  type LadderDecision,
+  type CardRect,
+  LADDER_MIN_WIDTH,
+  LADDER_MIN_HEIGHT,
+  LADDER_SCALE,
+  LADDER_RENDERED_SIZE,
+  resolveLadderLayout,
+} from '../utils/ladderLayout';
+import { createSeededRandom } from '../utils/brickLayout';
 
 const BrickLayout = {
   None: 'NONE',
@@ -81,6 +92,11 @@ export class MainScene extends Phaser.Scene {
   private brickGroup?: Phaser.Physics.Arcade.StaticGroup;
   private brickLayoutConfig?: BrickLayoutConfig;
   private brickLayoutSeed?: number;
+
+  // Ladder
+  private ladderDecision?: LadderDecision;
+  private ladderImageGroup?: Phaser.GameObjects.Group;
+  private ladderZone?: Phaser.GameObjects.Zone;
 
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
@@ -158,6 +174,7 @@ export class MainScene extends Phaser.Scene {
 
     const startX = Phaser.Math.Between(width * 0.25, width * 0.75);
     this.player = this.physics.add.sprite(startX, -100, 'idle');
+    this.player.setDepth(1);
     this.player.setScale(this.PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
 
@@ -206,6 +223,8 @@ export class MainScene extends Phaser.Scene {
       this.createContentPlatforms();
       this.initialiseBrickLayout();
       this.createBrickPlatforms();
+      this.initialiseLadderLayout();
+      this.createLadder();
     });
 
     this.createAnimations();
@@ -435,6 +454,18 @@ export class MainScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Generates and stores the ladder layout for a session.
+   *
+   * Uses same seed as the brick layout for session consistency
+   * Called once after DOM layout settles
+   */
+  private initialiseLadderLayout(): void {
+    if (!this.brickLayoutSeed) return;
+    const rng = createSeededRandom(this.brickLayoutSeed);
+    this.ladderDecision = generateLadderDecision(rng);
+  }
+
   createBrickPlatforms() {
     this.brickGroup?.clear(true, true);
 
@@ -479,6 +510,86 @@ export class MainScene extends Phaser.Scene {
         spanLeft,
         scaledBrickSize
       );
+    }
+  }
+
+  /**
+   * Renders ladder layout fom live DOM positions.
+   *
+   * Clears any existing ladder
+   * Called on initial load, resize, and scroll reset
+   */
+  private createLadder(): void {
+    this.clearLadder();
+
+    if (!this.shouldShowLadder()) return;
+    if (!this.ladderDecision) return;
+
+    const sectionElements = Array.from(
+      document.querySelectorAll('[data-testid$="-section"]')
+    );
+    if (sectionElements.length < 3) return;
+
+    const rects = sectionElements
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+
+    if (rects.length < 3) return;
+
+    const cardRects: CardRect[] = rects.map((r) => ({
+      left: r.left,
+      right: r.right,
+      top: r.top,
+    }));
+
+    const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    const layout = resolveLadderLayout(
+      this.ladderDecision,
+      cardRects,
+      groundTopY
+    );
+    const { x, topY, bottomY, tileCount } = layout;
+
+    this.ladderImageGroup = this.add.group();
+
+    const topCap = this.add.image(x, topY, 'ladder-top');
+    topCap.setScale(LADDER_SCALE);
+    this.ladderImageGroup.add(topCap);
+
+    // Ladder body stacked downward frop top cap
+    for (let i = 0; i < tileCount; i++) {
+      const tileY = topY + LADDER_RENDERED_SIZE / 2 + i * LADDER_RENDERED_SIZE;
+      const tile = this.add.image(x, tileY, 'ladder-body');
+      tile.setScale(LADDER_SCALE);
+      this.ladderImageGroup.add(tile);
+    }
+
+    // Invisible zone. Full ladder height for overlap detection
+    const zoneHeight = bottomY - topY;
+    const zoneCenterY = topY + zoneHeight / 2;
+    this.ladderZone = this.add.zone(
+      x,
+      zoneCenterY,
+      LADDER_RENDERED_SIZE,
+      zoneHeight
+    );
+    this.physics.add.existing(this.ladderZone, true);
+    this.physics.add.overlap(this.player!, this.ladderZone);
+  }
+
+  /**
+   * Destroys all ladder visuals and the overlap zone
+   * Safe to call if ladder was never created
+   */
+  private clearLadder(): void {
+    this.ladderImageGroup?.clear(true, true);
+    this.ladderImageGroup = undefined;
+
+    if (this.ladderZone) {
+      this.ladderZone.destroy();
+      this.ladderZone = undefined;
     }
   }
 
@@ -778,9 +889,10 @@ export class MainScene extends Phaser.Scene {
       }
     }
 
-    // Rebuild content platforms to match new DOM positions
+    // Rebuild match new DOM positions
     this.createContentPlatforms();
     this.createBrickPlatforms();
+    this.createLadder();
   }
 
   private getGroundCenterY(height: number): number {
@@ -799,6 +911,13 @@ export class MainScene extends Phaser.Scene {
     if (h >= this.BP_HEIGHT_BOTH) return BrickLayout.Both;
     if (h >= this.BP_HEIGHT_LOWER) return BrickLayout.LowerOnly;
     return BrickLayout.None;
+  }
+
+  private shouldShowLadder(): boolean {
+    return (
+      window.innerWidth >= LADDER_MIN_WIDTH &&
+      window.innerHeight > LADDER_MIN_HEIGHT
+    );
   }
 
   private navigateBack() {
@@ -828,12 +947,14 @@ export class MainScene extends Phaser.Scene {
       this.isScrolled = false;
       this.createContentPlatforms();
       this.createBrickPlatforms();
+      this.createLadder();
     } else if (!atTop && !this.isScrolled) {
       // Scrolled away from top -> clear platforms. Drop player to ground
       this.isScrolled = true;
       this.platformGroup?.clear(true, true);
       this.platformDebugGraphics?.clear();
       this.brickGroup?.clear(true, true); // clear bricks on scroll away
+      this.clearLadder();
     }
   };
 
@@ -842,5 +963,6 @@ export class MainScene extends Phaser.Scene {
       'scroll',
       this.handleContentScroll
     );
+    this.clearLadder();
   }
 }

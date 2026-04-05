@@ -13,8 +13,8 @@ export const LADDER_SCALE = 2.2;
 export const LADDER_RENDERED_SIZE = LADDER_NATIVE_SIZE * LADDER_SCALE;
 
 // Viewport threshold
-export const LADDER_MIN_WIDTH = 1218;
-export const LADDER_MIN_HEIGHT = 780;
+export const LADDER_MIN_WIDTH = 1210;
+export const LADDER_MIN_HEIGHT = 195;
 
 // Types
 export type LadderSide = 'left' | 'right';
@@ -25,12 +25,15 @@ export interface CardRect {
   top: number;
 }
 
-export interface LadderLayout {
+export interface LadderDecision {
   cardIndex: number;
   side: LadderSide;
-  x: number; // X centre of the ladder column in screen
-  topY: number; // Y of the card top
-  bottomY: number; // Y of ground top
+}
+
+export interface LadderLayout {
+  x: number;
+  topY: number;
+  bottomY: number;
   tileCount: number;
 }
 
@@ -42,10 +45,7 @@ export interface LadderLayout {
  *   - leftmost card (index 0) -> always left edge
  *   - rightmost card (index 2) -> always right edge
  */
-export function pickLadderPosition(rng: () => number): {
-  cardIndex: number;
-  side: LadderSide;
-} {
+export function pickLadderDecision(rng: () => number): LadderDecision {
   const useLeftCard = rng() < 0.5;
   return useLeftCard
     ? { cardIndex: 0, side: 'left' }
@@ -82,27 +82,37 @@ export function calcTileCount(topY: number, bottomY: number): number {
  */
 
 /**
- * Generates the full ladder layout for a session
+ * Generates session-stable ladder from seeded RNG
  *
- * Call once after DOM layout settles
+ * Call once at page load
  * Store the result and reuses on every resize and scroll rebuild
  *
- * @param cardRects - bounding rects for all content cards, left to right
- * @param groundTopY - Y coordinate of the top edge of the ground platform
  * @param rng - seeded random function
  */
-export function generateLadderLayout(
-  cardRects: CardRect[],
-  groundTopY: number,
-  rng: () => number
-): LadderLayout {
-  const { cardIndex, side } = pickLadderPosition(rng);
-  const card = cardRects[cardIndex];
+export function generateLadderDecision(rng: () => number): LadderDecision {
+  return pickLadderDecision(rng);
+}
 
-  const x = calcLadderX(card, side);
+/**
+ * Resolves full ladder layout from current DOM position
+ *
+ * Call on every render
+ * Reads fresh card rects so the ladder tracks card reflow correctly
+ *
+ * @param decision - session-stable card/side decision
+ * @param cardRects - current bounding rects for all content cards, left to right
+ * @param groundTopY - current Y coordinate of the top edge of the ground platform
+ */
+export function resolveLadderLayout(
+  decision: LadderDecision,
+  cardRects: CardRect[],
+  groundTopY: number
+): LadderLayout {
+  const card = cardRects[decision.cardIndex];
+  const x = calcLadderX(card, decision.side);
   const topY = card.top;
-  const bottomY = groundTopY;
+  const bottomY = groundTopY - LADDER_RENDERED_SIZE;
   const tileCount = calcTileCount(topY, bottomY);
 
-  return { cardIndex, side, x, topY, bottomY, tileCount };
+  return { x, topY, bottomY, tileCount };
 }

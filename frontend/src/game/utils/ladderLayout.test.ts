@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  pickLadderPosition,
+  pickLadderDecision,
   calcLadderX,
   calcTileCount,
-  generateLadderLayout,
+  generateLadderDecision,
+  resolveLadderLayout,
   LADDER_RENDERED_SIZE,
   type CardRect,
+  type LadderDecision,
 } from './ladderLayout';
 
 // Helpers
@@ -20,32 +22,32 @@ const MIDDLE_CARD: CardRect = { left: 400, right: 600, top: 200 };
 const GROUND_TOP_Y = 600;
 
 /**
- * pickLadderPosition
+ * pickLadderDecision
  */
-describe('pickLadderPosition', () => {
+describe('pickLadderDecision', () => {
   it('returns cardIndex 0 and side left when rng is below 0.5', () => {
     const rng = makeRng(0.3);
-    const result = pickLadderPosition(rng);
+    const result = pickLadderDecision(rng);
     expect(result.cardIndex).toBe(0);
     expect(result.side).toBe('left');
   });
 
   it('returns cardIndex 2 and side right when rng is 0.5 or above', () => {
     const rng = makeRng(0.5);
-    const result = pickLadderPosition(rng);
+    const result = pickLadderDecision(rng);
     expect(result.cardIndex).toBe(2);
     expect(result.side).toBe('right');
   });
 
   it('never returns leftmost card with right side', () => {
     const rng = makeRng(0.1);
-    const result = pickLadderPosition(rng);
+    const result = pickLadderDecision(rng);
     expect(result.cardIndex === 0 && result.side === 'right').toBe(false);
   });
 
   it('never returns rightmost card with left side', () => {
     const rng = makeRng(0.9);
-    const result = pickLadderPosition(rng);
+    const result = pickLadderDecision(rng);
     expect(result.cardIndex === 2 && result.side === 'left').toBe(false);
   });
 });
@@ -103,52 +105,57 @@ describe('calcTileCount', () => {
 });
 
 /**
- * generateLadderLayout
+ * resolveLadderLayout
  */
-describe('generateLadderLayout', () => {
+describe('resolveLadderLayout', () => {
   const cards = [LEFT_CARD, MIDDLE_CARD, RIGHT_CARD];
 
-  it('returns a layout with the correct card index and side', () => {
-    const rng = makeRng(0.3);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
-    expect(layout.cardIndex).toBe(0);
-    expect(layout.side).toBe('left');
+  const leftDecision: LadderDecision = { cardIndex: 0, side: 'left' };
+  const rightDecision: LadderDecision = { cardIndex: 2, side: 'right' };
+
+  it('returns correct x for left card decision', () => {
+    const layout = resolveLadderLayout(leftDecision, cards, GROUND_TOP_Y);
+    expect(layout.x).toBeCloseTo(LEFT_CARD.left - LADDER_RENDERED_SIZE / 2);
   });
 
-  it('sets topY to the card top', () => {
-    const rng = makeRng(0.3, 0.3);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
+  it('sets topY to the chosen card top', () => {
+    const layout = resolveLadderLayout(leftDecision, cards, GROUND_TOP_Y);
     expect(layout.topY).toBe(LEFT_CARD.top);
   });
 
-  it('sets bottomY to groupTopY', () => {
-    const rng = makeRng(0.3, 0.3);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
-    expect(layout.bottomY).toBe(GROUND_TOP_Y);
+  it('sets bottomY to groundTopY minus one full tile', () => {
+    const layout = resolveLadderLayout(leftDecision, cards, GROUND_TOP_Y);
+    expect(layout.bottomY).toBeCloseTo(GROUND_TOP_Y - LADDER_RENDERED_SIZE);
   });
 
   it('tileCount covers the full vertical span', () => {
-    const rng = makeRng(0.3, 0.3);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
+    const layout = resolveLadderLayout(leftDecision, cards, GROUND_TOP_Y);
     const span = layout.bottomY - layout.topY;
     expect(layout.tileCount * LADDER_RENDERED_SIZE).toBeGreaterThanOrEqual(
       span
     );
   });
 
-  it('ladder x sits immediately outside the chosen card boundary', () => {
-    const rng = makeRng(0.3);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
-    // Left card, left side — ladder should be to the left of the card
+  it('ladder x sits immediately outside the left card boundary', () => {
+    const layout = resolveLadderLayout(leftDecision, cards, GROUND_TOP_Y);
     expect(layout.x).toBeLessThan(LEFT_CARD.left);
   });
 
   it('works correctly for rightmost card on right side', () => {
-    const rng = makeRng(0.5);
-    const layout = generateLadderLayout(cards, GROUND_TOP_Y, rng);
-    expect(layout.cardIndex).toBe(2);
-    expect(layout.side).toBe('right');
-    // Ladder should be to the right of the card
+    const layout = resolveLadderLayout(rightDecision, cards, GROUND_TOP_Y);
     expect(layout.x).toBeCloseTo(RIGHT_CARD.right + LADDER_RENDERED_SIZE / 2);
+    expect(layout.topY).toBe(RIGHT_CARD.top);
+  });
+});
+
+/**
+ * generateLadderDecision
+ */
+describe('generateLadderDecision', () => {
+  it('returns a valid decision from the rng', () => {
+    const rng = makeRng(0.3);
+    const decision = generateLadderDecision(rng);
+    expect(decision.cardIndex).toBe(0);
+    expect(decision.side).toBe('left');
   });
 });
