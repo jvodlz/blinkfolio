@@ -80,9 +80,6 @@ export class MainScene extends Phaser.Scene {
   private brickLayoutConfig?: BrickLayoutConfig;
   private brickLayoutSeed?: number;
 
-  // Flower
-  private flowerGroup?: Phaser.Physics.Arcade.StaticGroup;
-
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
 
@@ -179,12 +176,21 @@ export class MainScene extends Phaser.Scene {
       this
     );
 
-    this.flowerGroup = this.physics.add.staticGroup();
-
     this.enemyGroup = this.physics.add.group();
     this.physics.add.collider(this.enemyGroup, this.ground!);
     this.physics.add.collider(this.enemyGroup, this.platformGroup!);
-    this.physics.add.collider(this.enemyGroup, this.brickGroup!);
+
+    this.physics.add.collider(
+      this.enemyGroup,
+      this.brickGroup!,
+      undefined,
+      (enemy, _brick) => {
+        const enemyBody = (enemy as Phaser.Physics.Arcade.Sprite)
+          .body as Phaser.Physics.Arcade.Body;
+        return enemyBody.blocked.down || enemyBody.blocked.up;
+      },
+      this
+    );
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
@@ -533,14 +539,9 @@ export class MainScene extends Phaser.Scene {
   private spawnFlower(brick: Phaser.GameObjects.Image): void {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
-    const flower = this.flowerGroup!.create(
-      brick.x,
-      brick.y - scaledBrickSize,
-      'flower'
-    ) as Phaser.Types.Physics.Arcade.ImageWithStaticBody;
+    const flower = this.add.image(brick.x, brick.y - scaledBrickSize, 'flower');
 
     flower.setScale(this.FLOWER_SCALE);
-    flower.refreshBody();
 
     this.time.delayedCall(8000, () => {
       if (!flower.active) return;
@@ -567,6 +568,7 @@ export class MainScene extends Phaser.Scene {
 
     enemy.setScale(this.ENEMY_SCALE);
     enemy.setBodySize(this.ENEMY_BODY_WIDTH, this.ENEMY_BODY_HEIGHT);
+    (enemy.body as Phaser.Physics.Arcade.Body).pushable = false;
     enemy.setOffset(this.ENEMY_BODY_OFFSET_X, this.ENEMY_BODY_OFFSET_Y);
     enemy.setGravityY(0);
     enemy.setVelocityX(0);
