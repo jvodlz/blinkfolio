@@ -672,15 +672,28 @@ export class MainScene extends Phaser.Scene {
   private stompEnemy(enemy: Phaser.Physics.Arcade.Sprite): void {
     enemy.body!.enable = false;
 
+    const targetY =
+      enemy.y +
+      (enemy.displayHeight / 2) * (1 - 0.05) -
+      this.ENEMY_BODY_OFFSET_Y;
+
     this.tweens.add({
       targets: enemy,
-      scaleY: 0,
-      alpha: 0,
-      y: enemy.y + enemy.displayHeight / 2,
-      duration: 800,
-      ease: 'Power2',
+      scaleY: 0.05,
+      y: targetY,
+      duration: 200,
+      ease: 'Bounce.Out',
       onComplete: () => {
-        if (enemy.active) enemy.destroy();
+        if (!enemy.active) return;
+        this.tweens.add({
+          targets: enemy,
+          alpha: 0,
+          duration: 600,
+          ease: 'Linear',
+          onComplete: () => {
+            if (enemy.active) enemy.destroy();
+          },
+        });
       },
     });
   }
