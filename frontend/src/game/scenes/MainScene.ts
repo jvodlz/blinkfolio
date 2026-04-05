@@ -34,6 +34,8 @@ export class MainScene extends Phaser.Scene {
   private readonly PLAYER_BODY_HEIGHT = 15;
   private readonly PLAYER_BODY_OFFSET_X = 11;
   private readonly PLAYER_BODY_OFFSET_Y = 17;
+  private readonly FAINT_FLASH_COUNT = 5;
+  private readonly FAINT_FLASH_DURATION = 2500;
 
   // Brick platform
   private readonly BRICK_SIMPLE_SCALE = 0.625;
@@ -82,6 +84,9 @@ export class MainScene extends Phaser.Scene {
 
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
+
+  // Player state
+  private isFainting: boolean = false;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -182,6 +187,15 @@ export class MainScene extends Phaser.Scene {
 
     this.physics.add.collider(this.enemyGroup, this.brickGroup!);
 
+    this.physics.add.overlap(
+      this.player!,
+      this.enemyGroup,
+      this
+        .handleEnemyContact as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
+
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
     this.time.delayedCall(100, () => {
@@ -232,7 +246,7 @@ export class MainScene extends Phaser.Scene {
       key: 'faint-anim',
       frames: this.anims.generateFrameNumbers('faint', { start: 0, end: 5 }),
       frameRate: 8,
-      repeat: -1,
+      repeat: 0,
     });
 
     // Enemy animation
@@ -266,6 +280,7 @@ export class MainScene extends Phaser.Scene {
 
   update() {
     if (!this.player || !this.cursors) return;
+    if (this.isFainting) return;
 
     const { width, height } = this.cameras.main;
 
@@ -622,6 +637,90 @@ export class MainScene extends Phaser.Scene {
       clearCooldown(brickImage);
       brickImage.setTexture('brick-interactive');
     });
+  }
+
+  /**
+   * Fired on every frame the player and an enemy overlap.
+   *
+   * Stomp (player falling onto enemy from above) -> squash and destroy enemy
+   * Side contact -> trigger player faint if not already fainting
+   */
+  private handleEnemyContact(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ) {
+    if (this.isFainting) return;
+
+    const playerBody = player.body as Phaser.Physics.Arcade.Body;
+    const enemySprite = enemy as Phaser.Physics.Arcade.Sprite;
+
+    const isStomp =
+      playerBody.velocity.y > 0 &&
+      (player as Phaser.Physics.Arcade.Sprite).y < enemySprite.y;
+
+    if (isStomp) {
+      this.stompEnemy(enemySprite);
+    } else {
+      this.triggerFaint();
+    }
+  }
+
+  /**
+   * Squash-and-tween on the enemy then destroy
+   * Physics body disabled immediately so no further contact fires
+   */
+  private stompEnemy(enemy: Phaser.Physics.Arcade.Sprite): void {
+    enemy.body!.enable = false;
+
+    this.tweens.add({
+      targets: enemy,
+      scaleY: 0,
+      alpha: 0,
+      y: enemy.y + enemy.displayHeight / 2,
+      duration: 800,
+      ease: 'Power2',
+      onComplete: () => {
+        if (enemy.active) enemy.destroy();
+      },
+    });
+  }
+
+  private triggerFaint(): void {
+    if (!this.player) return;
+
+    this.isFainting = true;
+    this.player.setVelocity(0, 0);
+    this.player.play('faint-anim');
+
+    this.player.once(
+      Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'faint-anim',
+      () => {
+        if (!this.player) return;
+
+        // Restore controls before flashing begins
+        this.isFainting = false;
+
+        const flashInterval =
+          this.FAINT_FLASH_DURATION / (this.FAINT_FLASH_COUNT * 2);
+        let flashCount = 0;
+        const totalFlashes = this.FAINT_FLASH_COUNT * 2;
+
+        const flashTimer = this.time.addEvent({
+          delay: flashInterval,
+          repeat: totalFlashes - 1,
+          callback: () => {
+            if (!this.player) return;
+            flashCount++;
+            this.player.setAlpha(flashCount % 2 === 0 ? 1 : 0.2);
+
+            if (flashCount >= totalFlashes) {
+              this.player.setAlpha(1);
+              flashTimer.remove();
+            }
+          },
+        });
+      }
+    );
   }
 
   private handleResize(gameSize: Phaser.Structs.Size) {
