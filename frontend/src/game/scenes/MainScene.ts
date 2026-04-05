@@ -10,6 +10,7 @@ import {
   markCoolingDown,
   clearCooldown,
 } from '../utils/brickCooldown';
+import { randomSpawnType, randomDirection } from '../utils/spawnUtils';
 
 const BrickLayout = {
   None: 'NONE',
@@ -39,7 +40,18 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_INTERACTIVE_SCALE = 2.2;
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
   private readonly BRICK_ABOVE_CARD_OFFSET = 70;
-  private readonly BRICK_BELOW_CARD_OFFSET = 85;
+  private readonly BRICK_ABOVE_GROUND_OFFSET = 75;
+
+  // Items
+  private readonly FLOWER_SCALE = 2;
+
+  // Enemy
+  private readonly ENEMY_SCALE = 2.5;
+  private readonly ENEMY_SPEED = 90;
+  private readonly ENEMY_BODY_WIDTH = 14;
+  private readonly ENEMY_BODY_HEIGHT = 9;
+  private readonly ENEMY_BODY_OFFSET_X = 1;
+  private readonly ENEMY_BODY_OFFSET_Y = 4;
 
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
@@ -67,6 +79,9 @@ export class MainScene extends Phaser.Scene {
   private brickGroup?: Phaser.Physics.Arcade.StaticGroup;
   private brickLayoutConfig?: BrickLayoutConfig;
   private brickLayoutSeed?: number;
+
+  // Enemy
+  private enemyGroup?: Phaser.Physics.Arcade.Group;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -160,6 +175,12 @@ export class MainScene extends Phaser.Scene {
       undefined,
       this
     );
+
+    this.enemyGroup = this.physics.add.group();
+    this.physics.add.collider(this.enemyGroup, this.ground!);
+    this.physics.add.collider(this.enemyGroup, this.platformGroup!);
+
+    this.physics.add.collider(this.enemyGroup, this.brickGroup!);
 
     // Sync HTML content sections to Phaser platforms
     // Delay allows DOM to finish rendering before positions are read
@@ -296,6 +317,14 @@ export class MainScene extends Phaser.Scene {
       this.player.y = groundY - this.player.displayHeight / 2;
       this.player.setVelocityY(0);
     }
+
+    // Destroy enemies that walked off screen
+    this.enemyGroup?.getChildren().forEach((child) => {
+      const enemy = child as Phaser.Physics.Arcade.Sprite;
+      if (enemy.x < -100 || enemy.x > width + 100) {
+        enemy.destroy();
+      }
+    });
   }
 
   createContentPlatforms() {
@@ -408,11 +437,13 @@ export class MainScene extends Phaser.Scene {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
     const spanLeft = Math.min(...rects.map((r) => r.left));
-    const lowestCardBottom = Math.max(...rects.map((r) => r.bottom));
     const highestCardTop = Math.min(...rects.map((r) => r.top));
 
     // Render Lower row (when layout is not None)
-    const belowRowY = lowestCardBottom + this.BRICK_BELOW_CARD_OFFSET;
+    // Anchored to ground platform
+    const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
+    const groundTop = groundCenterY - this.GROUND_HEIGHT / 2;
+    const belowRowY = groundTop - this.BRICK_ABOVE_GROUND_OFFSET;
     this.renderBrickRow(
       this.brickLayoutConfig.bottomRow,
       belowRowY,
@@ -486,7 +517,71 @@ export class MainScene extends Phaser.Scene {
 
       // Sync physics body to scaled visual size
       brick.refreshBody();
+
+      // Override physics body to 40x40 to match simple-bricks exactly
+      // Offset centres the 40px body withing the 39.6px visual
+      if (textureKey === 'brick-interactive') {
+        const body = brick.body as Phaser.Physics.Arcade.StaticBody;
+        body.setSize(40, 40, true);
+      }
     }
+  }
+
+  /**
+   * Spawn a flower
+   *
+   * Flower is static - purely decorative
+   * Despawns after brick cooldown duration via its own delayedCall
+   *
+   * @param brick - the interactive brick that was hit
+   */
+  private spawnFlower(brick: Phaser.GameObjects.Image): void {
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const flower = this.add.image(brick.x, brick.y - scaledBrickSize, 'flower');
+
+    flower.setScale(this.FLOWER_SCALE);
+
+    this.time.delayedCall(8000, () => {
+      if (!flower.active) return;
+      flower.destroy();
+    });
+  }
+
+  /**
+   * Spawn an enemy
+   *
+   * Enemy pauses 1s then walks in a random direction.
+   * Destroyed in update() when it exits the viewport
+   *
+   * @param brick - the interactive brick that was hit
+   */
+  private spawnEnemy(brick: Phaser.GameObjects.Image): void {
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+    const enemy = this.enemyGroup!.create(
+      brick.x,
+      brick.y - scaledBrickSize,
+      'enemy'
+    ) as Phaser.Physics.Arcade.Sprite;
+
+    enemy.setScale(this.ENEMY_SCALE);
+    enemy.setBodySize(this.ENEMY_BODY_WIDTH, this.ENEMY_BODY_HEIGHT);
+    (enemy.body as Phaser.Physics.Arcade.Body).pushable = false;
+    enemy.setOffset(this.ENEMY_BODY_OFFSET_X, this.ENEMY_BODY_OFFSET_Y);
+    enemy.setGravityY(0);
+    enemy.setVelocityX(0);
+    enemy.play('enemy-walk');
+
+    const direction = randomDirection(Math.random);
+
+    this.time.delayedCall(1000, () => {
+      if (!enemy.active) return;
+      const velocity =
+        direction === 'left' ? -this.ENEMY_SPEED : this.ENEMY_SPEED;
+      enemy.setVelocityX(velocity);
+      enemy.setFlipX(direction === 'left');
+    });
   }
 
   /**
@@ -513,6 +608,14 @@ export class MainScene extends Phaser.Scene {
     if (brickImage.texture.key !== 'brick-interactive') return;
 
     brickImage.setTexture('brick-interactive-hit');
+
+    // 50/50 chance: spawn flower or enemy
+    const spawnType = randomSpawnType(Math.random);
+    if (spawnType === 'flower') {
+      this.spawnFlower(brickImage);
+    } else {
+      this.spawnEnemy(brickImage);
+    }
 
     this.time.delayedCall(8000, () => {
       if (!brickImage.active) return;
