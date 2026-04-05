@@ -126,6 +126,10 @@ export class MainScene extends Phaser.Scene {
       '/assets/tiles/brick-interactive-hit.png'
     );
 
+    // Ladder
+    this.load.image('ladder-top', '/assets/tiles/ladder-top.png');
+    this.load.image('ladder-body', '/assets/tiles/ladder-body.png');
+
     // Item
     this.load.image('flower', '/assets/items/flower.png');
 
