@@ -75,6 +75,10 @@ export class MainScene extends Phaser.Scene {
   private readonly BP_HEIGHT_BOTH = 945;
   private readonly BP_HEIGHT_LOWER = 827;
 
+  // Ladder
+  private readonly LADDER_CLIMB_SPEED = 150;
+  private readonly LADDER_GRAVITY_REDUCED = -250;
+
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -101,6 +105,9 @@ export class MainScene extends Phaser.Scene {
   private ladderDecision?: LadderDecision;
   private ladderImageGroup?: Phaser.GameObjects.Group;
   private ladderZone?: Phaser.GameObjects.Zone;
+  private isClimbing: boolean = false;
+  private isOnLadder: boolean = false;
+  private ladderBounds?: { topY: number; bottomY: number };
 
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
@@ -305,11 +312,78 @@ export class MainScene extends Phaser.Scene {
     if (!this.player || !this.cursors) return;
     if (this.isFainting) return;
 
+    this.isOnLadder = false;
     const { width, height } = this.cameras.main;
 
     const moveLeft = this.cursors.left.isDown || this.wasd?.A.isDown;
     const moveRight = this.cursors.right.isDown || this.wasd?.D.isDown;
-    const jump = this.cursors.up.isDown || this.wasd?.W.isDown;
+    const climbUp = this.cursors.up.isDown || this.wasd?.W.isDown;
+    const climbDown = this.cursors.down.isDown || this.wasd?.S.isDown;
+
+    // Climbing mode
+    if (this.isClimbing) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+      // Disable gravity while climbing
+      playerBody.setGravityY(-this.physics.world.gravity.y);
+
+      if (climbUp) {
+        this.player.setVelocityY(-this.LADDER_CLIMB_SPEED);
+        this.player.play('walk-anim', true);
+      } else if (climbDown) {
+        this.player.setVelocityY(this.LADDER_CLIMB_SPEED);
+        this.player.play('walk-anim', true);
+      } else {
+        this.player.setVelocityY(0);
+        this.player.play('idle-anim', true);
+      }
+
+      // Exit climbing: walk off ladder
+      if (moveLeft || moveRight) {
+        this.exitClimbing();
+      }
+
+      // Exit climbing: land on card
+      if (this.ladderBounds && this.player.y < this.ladderBounds.topY) {
+        this.exitClimbing();
+      }
+
+      // Exit climbing: reach the ground
+      if (this.ladderBounds && this.player.y > this.ladderBounds.bottomY) {
+        this.exitClimbing();
+      }
+
+      // Horizontal movement allowed while climbing
+      if (moveLeft) {
+        this.player.setVelocityX(-this.PLAYER_SPEED);
+        this.player.setFlipX(true);
+      } else if (moveRight) {
+        this.player.setVelocityX(this.PLAYER_SPEED);
+        this.player.setFlipX(false);
+      } else {
+        this.player.setVelocityX(0);
+      }
+
+      return;
+    }
+
+    /**
+     * Normal movement
+     */
+
+    // Reduced gravity when falling within ladder bounds
+    if (this.isOnLadder) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+      if (playerBody.velocity.y > 0) {
+        playerBody.setGravityY(this.LADDER_GRAVITY_REDUCED);
+      } else {
+        playerBody.setGravityY(0);
+      }
+    } else {
+      // Restore normal gravity when not on ladder
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+      playerBody.setGravityY(0);
+    }
 
     // Horizontal movement
     if (moveLeft) {
@@ -330,6 +404,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Jump
+    const jump = climbUp;
     if (jump && this.player.body && this.player.body.touching.down) {
       this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
@@ -553,6 +628,7 @@ export class MainScene extends Phaser.Scene {
       groundTopY
     );
     const { x, topY, bottomY } = layout;
+    this.ladderBounds = { topY, bottomY };
 
     const ladderWidth = LADDER_RENDERED_SIZE;
     const ladderLeft = x - ladderWidth / 2;
@@ -593,7 +669,14 @@ export class MainScene extends Phaser.Scene {
     const zoneCenterY = topY + zoneHeight / 2;
     this.ladderZone = this.add.zone(x, zoneCenterY, ladderWidth, zoneHeight);
     this.physics.add.existing(this.ladderZone, true);
-    this.physics.add.overlap(this.player!, this.ladderZone);
+    this.physics.add.overlap(
+      this.player!,
+      this.ladderZone,
+      this
+        .handleLadderOverlap as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
   }
 
   /**
@@ -603,10 +686,25 @@ export class MainScene extends Phaser.Scene {
   private clearLadder(): void {
     this.ladderImageGroup?.clear(true, true);
     this.ladderImageGroup = undefined;
+    this.isClimbing = false;
+    this.isOnLadder = false;
+    this.ladderBounds = undefined;
 
     if (this.ladderZone) {
       this.ladderZone.destroy();
       this.ladderZone = undefined;
+    }
+  }
+
+  /**
+   * Exit climbing mode and restore normal physics
+   * Called when player walks off ladder, reaches top, or falls to bottom
+   */
+  private exitClimbing(): void {
+    this.isClimbing = false;
+    if (this.player) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+      playerBody.setGravityY(0);
     }
   }
 
@@ -769,6 +867,28 @@ export class MainScene extends Phaser.Scene {
       clearCooldown(brickImage);
       brickImage.setTexture('brick-interactive');
     });
+  }
+
+  /**
+   * Fired every frame the player overlaps the ladder zone.
+   *
+   * Sets isOnLadder flag for update() to read
+   * Activates climbing mode Up/W or Down/s is pressed
+   */
+  private handleLadderOverlap(): void {
+    this.isOnLadder = true;
+
+    if (this.isClimbing) return;
+
+    const climbUp =
+      this.cursors?.up.isDown === true || this.wasd?.W.isDown === true;
+
+    const climbDown =
+      this.cursors?.down.isDown === true || this.wasd?.S.isDown === true;
+
+    if (climbUp || climbDown) {
+      this.isClimbing = true;
+    }
   }
 
   /**
