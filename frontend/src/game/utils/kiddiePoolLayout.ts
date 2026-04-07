@@ -76,10 +76,10 @@ export function calcPoolX(card: CardRect, side: PoolSide): number {
  * Calculates the pool top Y position.
  *
  * Pool is embedded slightly into the ground for dug-in appearance
- * PoolY = groundTopY - POOL_HEIGHT + POOL_GROUND_EMBED
+ * PoolY = groundTopY - (POOL_HEIGHT / 2)+ POOL_GROUND_EMBED
  */
 export function calcPoolY(groundTopY: number): number {
-  return groundTopY - POOL_HEIGHT + POOL_GROUND_EMBED;
+  return groundTopY - POOL_HEIGHT / 2 + POOL_GROUND_EMBED;
 }
 
 /**

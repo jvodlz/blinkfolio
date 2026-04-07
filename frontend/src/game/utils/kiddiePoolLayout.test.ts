@@ -62,13 +62,13 @@ describe('calcPoolX', () => {
 });
 
 describe('calcPoolY', () => {
-  it('returns correct Y position embedded into ground', () => {
+  it('returns correct centre Y position embedded into ground', () => {
     const groundTopY = 500;
     const result = calcPoolY(groundTopY);
-    expect(result).toBe(groundTopY - POOL_HEIGHT + POOL_GROUND_EMBED);
+    expect(result).toBe(groundTopY - POOL_HEIGHT / 2 + POOL_GROUND_EMBED);
   });
 
-  it('pool top is above the ground top (pool is not fully below ground)', () => {
+  it('pool centre is above the ground top', () => {
     const groundTopY = 500;
     const result = calcPoolY(groundTopY);
     expect(result).toBeLessThan(groundTopY);
