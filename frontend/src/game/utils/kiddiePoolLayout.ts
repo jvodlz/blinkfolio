@@ -24,21 +24,22 @@ export interface PoolBounds {
 export type SplashTier = 'small' | 'medium' | 'large';
 
 // Pool dimensions
-export const POOL_WIDTH = 95;
-export const POOL_HEIGHT = 45;
+export const POOL_WIDTH = 120;
+export const POOL_HEIGHT = 100;
 export const POOL_GROUND_EMBED = 8;
 export const POOL_RIM_Y_OFFSET = 10;
 
-// Inset: 1/4 pool width overlaps the card boundary
-export const POOL_INSET_RATIO = 0.25;
+// Inset: pool width overlaps the card boundary
+export const POOL_INSET_RATIO = 0.1;
 
 // Splash thresholds
 export const SPLASH_THRESHOLD_MEDIUM = 100;
 export const SPLASH_THRESHOLD_LARGE = 250;
 
 // Colours
-export const POOL_COLOUR_TOP = 0xc8f135;
-export const POOL_COLOUR_BOTTOM = 0xff6b4a;
+export const POOL_COLOUR_TOP = 0xff6b4a;
+export const POOL_COLOUR_BOTTOM = 0xc8f135;
+export const POOL_COLOUR_SHADOW = 0x9dbf28;
 export const POOL_WATER_COLOUR = 0xc0e3ef;
 export const POOL_WATER_ALPHA = 0.7;
 
@@ -57,14 +58,17 @@ export function resolvePoolSide(ladder: LadderDecision): PoolDecision {
 /**
  * Calculates the pool centre X position.
  *
- * 1/4 of the pool width overlaps the card boundary
- * 3/4 sits outside the card
+ * POOL_INSET_RATIO controls what fraction of the pool overlaps the card boundary.
+ * The remainder sits outside
  *
- * Right side: centre = card.right + POOL_WIDTH * POOL_INSET_RATIO
- * Left side: centre = card.left - POOL_WIDTH * POOL_INSET_RATIO
+ * offset = (POOL_WIDTH / 2) - (POOL_WIDTH * POOL_INSET_RATIO)
+ * This places the centre so exactly POOL_INSET_RATIO of the pool is inside the card
+ *
+ * Right side: centre = card.right + offset
+ * Left side:  centre = card.left  - offset
  */
 export function calcPoolX(card: CardRect, side: PoolSide): number {
-  const offset = POOL_WIDTH * POOL_INSET_RATIO;
+  const offset = POOL_WIDTH / 2 - POOL_WIDTH * POOL_INSET_RATIO;
   return side === 'right' ? card.right + offset : card.left - offset;
 }
 

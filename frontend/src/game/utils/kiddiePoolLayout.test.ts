@@ -33,27 +33,31 @@ describe('calcPoolX', () => {
   it('places pool centre to the right of card.right when side is right', () => {
     const card = { left: 100, right: 500, top: 200 };
     const result = calcPoolX(card, 'right');
-    expect(result).toBeCloseTo(card.right + POOL_WIDTH * POOL_INSET_RATIO);
+    const expectedOffset = POOL_WIDTH / 2 - POOL_WIDTH * POOL_INSET_RATIO;
+    expect(result).toBeCloseTo(card.right + expectedOffset);
   });
 
   it('places pool centre to the left of card.left when side is left', () => {
     const card = { left: 100, right: 500, top: 200 };
     const result = calcPoolX(card, 'left');
-    expect(result).toBeCloseTo(card.left - POOL_WIDTH * POOL_INSET_RATIO);
+    const expectedOffset = POOL_WIDTH / 2 - POOL_WIDTH * POOL_INSET_RATIO;
+    expect(result).toBeCloseTo(card.left - expectedOffset);
   });
 
-  it('pool centre is 3/4 of pool width outside the card boundary on right side', () => {
+  it('pool overlaps card by POOL_INSET_RATIO fraction of pool width on right side', () => {
     const card = { left: 100, right: 500, top: 200 };
     const result = calcPoolX(card, 'right');
-    const distanceOutside = result - card.right;
-    expect(distanceOutside).toBeCloseTo(POOL_WIDTH * POOL_INSET_RATIO);
+    const poolLeftEdge = result - POOL_WIDTH / 2;
+    const overlapAmount = card.right - poolLeftEdge;
+    expect(overlapAmount).toBeCloseTo(POOL_WIDTH * POOL_INSET_RATIO);
   });
 
-  it('pool centre is 3/4 of pool width outside the card boundary on left side', () => {
+  it('pool overlaps card by POOL_INSET_RATIO fraction of pool width on left side', () => {
     const card = { left: 100, right: 500, top: 200 };
     const result = calcPoolX(card, 'left');
-    const distanceOutside = card.left - result;
-    expect(distanceOutside).toBeCloseTo(POOL_WIDTH * POOL_INSET_RATIO);
+    const poolRightEdge = result + POOL_WIDTH / 2;
+    const overlapAmount = poolRightEdge - card.left;
+    expect(overlapAmount).toBeCloseTo(POOL_WIDTH * POOL_INSET_RATIO);
   });
 });
 
