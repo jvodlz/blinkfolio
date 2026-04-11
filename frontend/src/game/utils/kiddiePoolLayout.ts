@@ -85,7 +85,7 @@ export function calcPoolY(groundTopY: number): number {
 /**
  * Determines the splash tier based on fall distance.
  *
- * Fall distance is measures from the player's Y at the moment of entry minus the pool rim Y
+ * Fall distance is measured from the pool rim Y minus player entry Y
  *
  * small: fallDistance < SPLASH_THRESHOLD_MEDIUM
  * medium: fallDistance>= SPLASH_THRESHOLD_MEDIUM and < SPLASH_THRESHOLD_LARGE
@@ -95,23 +95,6 @@ export function calcSplashTier(fallDistance: number): SplashTier {
   if (fallDistance >= SPLASH_THRESHOLD_LARGE) return 'large';
   if (fallDistance >= SPLASH_THRESHOLD_MEDIUM) return 'medium';
   return 'small';
-}
-
-/**
- * Returns true when the player has entered the pool from above.
- *
- * All conditions must hold:
- * - playerY <= poolRimY (player is at or above the rim)
- * - velocityY > 0 (player is moving downward)
- *
- * Note: the startedInsidePool guard is in the caller's responsibility (MainScene)
- */
-export function isEntryFromAbove(
-  playerY: number,
-  poolRimY: number,
-  velocityY: number
-): boolean {
-  return playerY <= poolRimY && velocityY > 0;
 }
 
 /**

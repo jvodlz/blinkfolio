@@ -4,7 +4,6 @@ import {
   calcPoolX,
   calcPoolY,
   calcSplashTier,
-  isEntryFromAbove,
   calcPoolBounds,
   POOL_WIDTH,
   POOL_INSET_RATIO,
@@ -97,28 +96,6 @@ describe('calcSplashTier', () => {
   it('returns large above the large threshold', () => {
     expect(calcSplashTier(SPLASH_THRESHOLD_LARGE + 1)).toBe('large');
     expect(calcSplashTier(500)).toBe('large');
-  });
-});
-
-describe('isEntryFromAbove', () => {
-  it('returns true when player Y is at or above pool rim and moving downward', () => {
-    expect(isEntryFromAbove(200, 210, 50)).toBe(true);
-  });
-
-  it('returns true when player Y equals pool rim Y and moving downward', () => {
-    expect(isEntryFromAbove(210, 210, 10)).toBe(true);
-  });
-
-  it('returns false when player Y is below pool rim', () => {
-    expect(isEntryFromAbove(300, 210, 50)).toBe(false);
-  });
-
-  it('returns false when vertical velocity is zero', () => {
-    expect(isEntryFromAbove(200, 210, 0)).toBe(false);
-  });
-
-  it('returns false when vertical velocity is negative (moving upward)', () => {
-    expect(isEntryFromAbove(200, 210, -50)).toBe(false);
   });
 });
 

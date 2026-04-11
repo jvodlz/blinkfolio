@@ -40,6 +40,8 @@ import {
   POOL_WATER_ALPHA,
   POOL_COLOUR_SHADOW,
   POOL_GROUND_EMBED,
+  calcSplashTier,
+  type SplashTier,
 } from '../utils/kiddiePoolLayout';
 
 const BrickLayout = {
@@ -118,6 +120,9 @@ export class MainScene extends Phaser.Scene {
   private readonly DUCK_WING_COLOUR = 0xd4b010;
   private readonly DUCK_BILL_COLOUR = 0xff8c00;
   private readonly DUCK_EYE_COLOUR = 0x1a1a1a;
+
+  // Splash Particle
+  private readonly SPLASH_TEXTURE_KEY = 'splash-particle';
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
@@ -219,6 +224,15 @@ export class MainScene extends Phaser.Scene {
       frameHeight: 16,
       endFrame: 7,
     });
+
+    // Splash Particles
+    if (!this.textures.exists(this.SPLASH_TEXTURE_KEY)) {
+      const graphics = this.make.graphics({ x: 0, y: 0 });
+      graphics.fillStyle(0xffffff, 1);
+      graphics.fillRect(0, 0, 6, 6);
+      graphics.generateTexture(this.SPLASH_TEXTURE_KEY, 6, 6);
+      graphics.destroy();
+    }
   }
 
   create() {
@@ -1384,6 +1398,78 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * Returns particle emitter config for the given splash tier.
+   *
+   * Each tier increases particle count, speed, scale, and lifespan
+   * Colour is tinted to match pool water. Alpha fades over lifetime
+   */
+  private createSplashConfig(
+    tier: SplashTier
+  ): Phaser.Types.GameObjects.Particles.ParticleEmitterConfig {
+    const base = {
+      tint: POOL_WATER_COLOUR,
+      angle: { min: -120, max: -60 },
+      gravityY: 300,
+      alpha: { start: 1, end: 0 },
+      frequency: -1,
+    };
+
+    if (tier === 'large') {
+      return {
+        ...base,
+        speed: { min: 180, max: 280 },
+        scale: { min: 0.6, max: 1.2 },
+        lifespan: 700,
+        quantity: 80,
+      };
+    }
+    if (tier === 'medium') {
+      return {
+        ...base,
+        speed: { min: 120, max: 200 },
+        scale: { min: 0.4, max: 0.8 },
+        lifespan: 550,
+        quantity: 42,
+      };
+    }
+    return {
+      ...base,
+      speed: { min: 80, max: 120 },
+      scale: { min: 0.3, max: 0.6 },
+      lifespan: 400,
+      quantity: 22,
+    };
+  }
+
+  /**
+   * Fires a one-shot particle burst on pool entry.
+   *
+   * Fall distance determines splash tier via calcSplashTier
+   * Emitter is created inline and destroys itself after all particles expire
+   */
+  private triggerSplash(): void {
+    if (!this.poolX || !this.poolRimY || !this.playerEntryY) return;
+
+    const fallDistance = this.poolRimY - this.playerEntryY;
+    const tier = calcSplashTier(fallDistance);
+    const config = this.createSplashConfig(tier);
+
+    const emitter = this.add.particles(
+      this.poolX,
+      this.poolRimY,
+      this.SPLASH_TEXTURE_KEY,
+      config
+    );
+
+    emitter.setDepth(3);
+    emitter.explode(config.quantity as number);
+
+    emitter.on(Phaser.GameObjects.Particles.Events.COMPLETE, () => {
+      if (emitter.active) emitter.destroy();
+    });
+  }
+
+  /**
    * Called when player centre reaches the pool water rim
    *
    * Pins player at the water surface
@@ -1413,6 +1499,7 @@ export class MainScene extends Phaser.Scene {
     this.player.setDepth(1.5);
 
     this.triggerDuckBob();
+    this.triggerSplash();
   }
 
   /**

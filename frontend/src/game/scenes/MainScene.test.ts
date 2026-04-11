@@ -15,6 +15,15 @@ vi.mock('phaser', () => ({
       add = { rectangle: vi.fn() };
       cameras = { main: { width: 800, height: 600 } };
       scale = { on: vi.fn() };
+      textures = { exists: vi.fn().mockReturnValue(false) };
+      make = {
+        graphics: vi.fn().mockReturnValue({
+          fillStyle: vi.fn(),
+          fillRect: vi.fn(),
+          generateTexture: vi.fn(),
+          destroy: vi.fn(),
+        }),
+      };
     },
   },
 }));
