@@ -415,6 +415,80 @@ export class MainScene extends Phaser.Scene {
     }
 
     /**
+     * Pool mode - player is floating inside the kiddie pool
+     */
+    if (this.isInPool) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+      // Keep gravity cancelled while in pool
+      playerBody.setGravityY(-this.physics.world.gravity.y);
+
+      // Drive gentle bob via velocity. Physics body stays in sync
+      if (this.playerPoolPinnedY !== undefined) {
+        this.poolBobTime += this.game.loop.delta / 1000;
+        const bobVelocity =
+          Math.sin(
+            this.poolBobTime *
+              (Math.PI / (this.POOL_PLAYER_BOB_DURATION / 1000))
+          ) * this.POOL_PLAYER_BOB_SPEED;
+        this.player.setVelocityY(bobVelocity);
+
+        // Safety clamp. Prvent drift beyond bob amplitude
+        if (
+          this.player.y <
+          this.playerPoolPinnedY - this.POOL_BOB_AMPLITUDE - 2
+        ) {
+          this.player.y = this.playerPoolPinnedY - this.POOL_BOB_AMPLITUDE - 2;
+        } else if (
+          this.player.y >
+          this.playerPoolPinnedY + this.POOL_BOB_AMPLITUDE + 2
+        ) {
+          this.player.y = this.playerPoolPinnedY + this.POOL_BOB_AMPLITUDE + 2;
+        }
+      }
+
+      // Clamp horizontal movement within pool bounds
+      if (this.poolBounds) {
+        const halfBody = this.player.displayWidth / 2;
+        if (this.player.x < this.poolBounds.left + halfBody) {
+          this.player.x = this.poolBounds.left + halfBody;
+          this.player.setVelocityX(0);
+        } else if (this.player.x > this.poolBounds.right - halfBody) {
+          this.player.x = this.poolBounds.right - halfBody;
+          this.player.setVelocityX(0);
+        }
+      }
+
+      // Horizontal movement in pool
+      if (moveLeft) {
+        this.player.setVelocityX(-this.PLAYER_SPEED * 0.4);
+        this.player.setFlipX(true);
+        this.player.play('walk-anim', true);
+        this.triggerWaterRipple();
+        this.triggerDuckBob();
+      } else if (moveRight) {
+        this.player.setVelocityX(this.PLAYER_SPEED * 0.4);
+        this.player.setFlipX(false);
+        this.player.play('walk-anim', true);
+        this.triggerWaterRipple();
+        this.triggerDuckBob();
+      } else {
+        this.player.setVelocityX(0);
+        this.player.play('idle-anim', true);
+      }
+
+      // Jump to exit pool
+      const jump = climbUp;
+      if (jump) {
+        this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
+        this.player.play('jump-anim', true);
+        this.handlePoolExit();
+      }
+
+      return;
+    }
+
+    /**
      * Normal movement
      */
 
