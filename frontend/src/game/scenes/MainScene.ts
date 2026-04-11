@@ -26,6 +26,21 @@ import {
   LADDER_RUNG_SPACING,
 } from '../utils/ladderLayout';
 import { createSeededRandom } from '../utils/brickLayout';
+import {
+  resolvePoolSide,
+  calcPoolX,
+  calcPoolY,
+  calcPoolBounds,
+  type PoolDecision,
+  type PoolBounds,
+  POOL_WIDTH,
+  POOL_COLOUR_TOP,
+  POOL_COLOUR_BOTTOM,
+  POOL_WATER_COLOUR,
+  POOL_WATER_ALPHA,
+  POOL_COLOUR_SHADOW,
+  POOL_GROUND_EMBED,
+} from '../utils/kiddiePoolLayout';
 
 const BrickLayout = {
   None: 'NONE',
@@ -79,6 +94,31 @@ export class MainScene extends Phaser.Scene {
   private readonly LADDER_CLIMB_SPEED = 150;
   private readonly LADDER_GRAVITY_REDUCED = -250;
 
+  // Pool drawing
+  private readonly POOL_BOTTOM_RING_H = 40;
+  private readonly POOL_BOTTOM_RING_Y_OFFSET = 18; // how far below pool centre the bottom ring sits
+  private readonly POOL_TOP_RING_H = 36;
+  private readonly POOL_TOP_RING_Y_OFFSET = 2;
+  private readonly POOL_TOP_RING_Y_INNER = 12; // ellipse centre shift within top ring bounds
+  private readonly POOL_WATER_Y_OFFSET = 8; // how far above pool centre the water sits
+  private readonly POOL_WATER_Y_INNER = 10; // water ellipse centre shift within water bounds
+  private readonly POOL_WATER_SHADOW_Y_INNER = 10.5;
+  private readonly POOL_WATER_WIDTH_RATIO = 0.8; // water ellipse width as fraction of POOL_WIDTH
+  private readonly POOL_WATER_H = 14;
+  private readonly POOL_WATER_SHADOW_H = 8;
+  private readonly POOL_DUCK_X_OFFSET = 20; // duck offset to the right of pool centre
+  private readonly POOL_DUCK_WATER_Y_OFFSET = 2;
+  private readonly POOL_BOB_AMPLITUDE = 3;
+  private readonly POOL_PLAYER_BOB_DURATION = 800;
+  private readonly POOL_PLAYER_BOB_SPEED = 15;
+  private readonly POOL_ENTRY_THRESHOLD = 20;
+
+  // Duck
+  private readonly DUCK_COLOUR = 0xf5d020;
+  private readonly DUCK_WING_COLOUR = 0xd4b010;
+  private readonly DUCK_BILL_COLOUR = 0xff8c00;
+  private readonly DUCK_EYE_COLOUR = 0x1a1a1a;
+
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -108,6 +148,23 @@ export class MainScene extends Phaser.Scene {
   private isClimbing: boolean = false;
   private isOnLadder: boolean = false;
   private ladderBounds?: { topY: number; bottomY: number };
+
+  // Kiddie pool
+  private poolDecision?: PoolDecision;
+  private poolGraphics?: Phaser.GameObjects.Graphics;
+  private waterShadowGraphics?: Phaser.GameObjects.Graphics;
+  private waterGraphics?: Phaser.GameObjects.Graphics;
+  private duckGraphics?: Phaser.GameObjects.Graphics;
+  private duckBaseY: number = 0;
+  private poolX?: number;
+  private poolY?: number;
+  private poolBounds?: PoolBounds;
+  private waterBounds?: PoolBounds;
+  private poolRimY?: number;
+  private isInPool: boolean = false;
+  private poolBobTime: number = 0;
+  private playerEntryY?: number;
+  private playerPoolPinnedY?: number;
 
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
@@ -232,6 +289,8 @@ export class MainScene extends Phaser.Scene {
       this.createBrickPlatforms();
       this.initialiseLadderLayout();
       this.createLadder();
+      this.initialisePoolLayout();
+      this.createKiddiePool();
     });
 
     this.createAnimations();
@@ -368,6 +427,80 @@ export class MainScene extends Phaser.Scene {
     }
 
     /**
+     * Pool mode - player is floating inside the kiddie pool
+     */
+    if (this.isInPool) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+      // Keep gravity cancelled while in pool
+      playerBody.setGravityY(-this.physics.world.gravity.y);
+
+      // Drive gentle bob via velocity. Physics body stays in sync
+      if (this.playerPoolPinnedY !== undefined) {
+        this.poolBobTime += this.game.loop.delta / 1000;
+        const bobVelocity =
+          Math.sin(
+            this.poolBobTime *
+              (Math.PI / (this.POOL_PLAYER_BOB_DURATION / 1000))
+          ) * this.POOL_PLAYER_BOB_SPEED;
+        this.player.setVelocityY(bobVelocity);
+
+        // Safety clamp. Prvent drift beyond bob amplitude
+        if (
+          this.player.y <
+          this.playerPoolPinnedY - this.POOL_BOB_AMPLITUDE - 2
+        ) {
+          this.player.y = this.playerPoolPinnedY - this.POOL_BOB_AMPLITUDE - 2;
+        } else if (
+          this.player.y >
+          this.playerPoolPinnedY + this.POOL_BOB_AMPLITUDE + 2
+        ) {
+          this.player.y = this.playerPoolPinnedY + this.POOL_BOB_AMPLITUDE + 2;
+        }
+      }
+
+      // Clamp horizontal movement within pool bounds
+      if (this.poolBounds) {
+        const halfBody = this.player.displayWidth / 2;
+        if (this.player.x < this.poolBounds.left + halfBody) {
+          this.player.x = this.poolBounds.left + halfBody;
+          this.player.setVelocityX(0);
+        } else if (this.player.x > this.poolBounds.right - halfBody) {
+          this.player.x = this.poolBounds.right - halfBody;
+          this.player.setVelocityX(0);
+        }
+      }
+
+      // Horizontal movement in pool
+      if (moveLeft) {
+        this.player.setVelocityX(-this.PLAYER_SPEED * 0.4);
+        this.player.setFlipX(true);
+        this.player.play('walk-anim', true);
+        this.triggerWaterRipple();
+        this.triggerDuckBob();
+      } else if (moveRight) {
+        this.player.setVelocityX(this.PLAYER_SPEED * 0.4);
+        this.player.setFlipX(false);
+        this.player.play('walk-anim', true);
+        this.triggerWaterRipple();
+        this.triggerDuckBob();
+      } else {
+        this.player.setVelocityX(0);
+        this.player.play('idle-anim', true);
+      }
+
+      // Jump to exit pool
+      const jump = climbUp;
+      if (jump) {
+        this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
+        this.player.play('jump-anim', true);
+        this.handlePoolExit();
+      }
+
+      return;
+    }
+
+    /**
      * Normal movement
      */
 
@@ -422,6 +555,33 @@ export class MainScene extends Phaser.Scene {
 
     if (this.player.x > rightBoundary) {
       this.player.x = rightBoundary;
+    }
+
+    /**
+     * Pool Entry Detection
+     *
+     * Triggers when player centre reaches or passes the water rim from above within ellipse X bounds
+     */
+    if (
+      this.poolRimY !== undefined &&
+      this.waterBounds !== undefined &&
+      !this.isInPool
+    ) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+      const withinWaterX =
+        this.player.x >= this.waterBounds.left &&
+        this.player.x <= this.waterBounds.right;
+
+      const isAirborne = !playerBody.blocked.down;
+
+      const nearRim =
+        playerBody.bottom >= this.poolRimY &&
+        playerBody.bottom <= this.poolRimY + this.POOL_ENTRY_THRESHOLD;
+
+      if (withinWaterX && isAirborne && nearRim && playerBody.velocity.y > 0) {
+        this.handlePoolEntry();
+      }
     }
 
     // Safety check for falling below screen
@@ -1030,6 +1190,7 @@ export class MainScene extends Phaser.Scene {
     this.createContentPlatforms();
     this.createBrickPlatforms();
     this.createLadder();
+    this.createKiddiePool();
   }
 
   private getGroundCenterY(height: number): number {
@@ -1055,6 +1216,376 @@ export class MainScene extends Phaser.Scene {
       window.innerWidth >= LADDER_MIN_WIDTH &&
       window.innerHeight > LADDER_MIN_HEIGHT
     );
+  }
+
+  /**
+   * Derives pool decision from ladder decision.
+   *
+   * Pool is always on the opposite card and side from the ladder
+   * Called once after initialiseLadderLayout()
+   */
+  private initialisePoolLayout(): void {
+    if (!this.ladderDecision) return;
+    this.poolDecision = resolvePoolSide(this.ladderDecision);
+  }
+
+  /**
+   * Pool Water Entry Point
+   *
+   * Calculates the Y coordinate of the bottom edge of the water ellipse
+   * waterEllipseCentre = poolY - POOL_WATER_Y_OFFSET + POOL_WATER_Y_INNER
+   * waterBottomEdge = waterEllipseCentre + POOL_WATER_H / 2
+   */
+  private calcWaterSurfaceY(poolY: number): number {
+    const waterEllipseCentre =
+      poolY - this.POOL_WATER_Y_OFFSET + this.POOL_WATER_Y_INNER;
+    return waterEllipseCentre + this.POOL_WATER_H / 2;
+  }
+
+  /**
+   * Draws the kiddie pool and duck from live DOM positions.
+   *
+   * Clears any existing pool
+   * Called on initial load, resize, scroll reset
+   */
+  private createKiddiePool(): void {
+    this.clearKiddiePool();
+
+    if (!this.shouldShowLadder()) return;
+    if (!this.poolDecision) return;
+
+    const sectionElements = Array.from(
+      document.querySelectorAll('[data-testid$="-section"]')
+    );
+    if (sectionElements.length < 3) return;
+
+    const rects = sectionElements
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+    if (rects.length < 3) return;
+
+    const cardRects = rects.map((r) => ({
+      left: r.left,
+      right: r.right,
+      top: r.top,
+    }));
+
+    const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    const card = cardRects[this.poolDecision.cardIndex];
+    this.poolX = calcPoolX(card, this.poolDecision.side);
+    this.poolY = calcPoolY(groundTopY);
+    this.poolBounds = calcPoolBounds(this.poolX);
+    const waterWidth = POOL_WIDTH * this.POOL_WATER_WIDTH_RATIO;
+    this.waterBounds = {
+      left: this.poolX - waterWidth / 2,
+      right: this.poolX + waterWidth / 2,
+    };
+
+    // Pool rim Y is the bottom edge of the water ellipse.
+    // Player crosses this Y when falling into the pool from above.
+    this.poolRimY = this.calcWaterSurfaceY(this.poolY);
+
+    // Pool shell
+    this.poolGraphics = this.add.graphics();
+    this.poolGraphics.setDepth(1.1);
+    this.drawPool(this.poolGraphics, this.poolX, this.poolY);
+
+    // Water shadow
+    this.waterShadowGraphics = this.add.graphics();
+    this.waterShadowGraphics.setDepth(1.2);
+    this.drawWaterShadow(this.waterShadowGraphics, this.poolX, this.poolY);
+
+    // Water surface
+    this.waterGraphics = this.add.graphics();
+    this.waterGraphics.setDepth(2);
+    this.waterGraphics.setPosition(this.poolX, this.poolY);
+    this.drawWaterSurface(this.waterGraphics, 0, 0);
+
+    // Duck
+    this.duckGraphics = this.add.graphics();
+    this.duckGraphics.setDepth(2);
+    this.duckBaseY = 0;
+    this.drawDuck(this.duckGraphics, this.poolX, this.poolY);
+  }
+
+  /**
+   * Destroys all pool and duck graphics safely
+   * Safe to call if pool was never created
+   */
+  private clearKiddiePool(): void {
+    if (this.poolGraphics) {
+      this.poolGraphics.destroy();
+      this.poolGraphics = undefined;
+    }
+    if (this.waterShadowGraphics) {
+      this.waterShadowGraphics.destroy();
+      this.waterShadowGraphics = undefined;
+    }
+    if (this.waterGraphics) {
+      this.waterGraphics.destroy();
+      this.waterGraphics = undefined;
+    }
+    if (this.duckGraphics) {
+      this.duckGraphics.destroy();
+      this.duckGraphics = undefined;
+    }
+
+    if (this.isInPool) {
+      this.handlePoolExit();
+    }
+
+    this.poolX = undefined;
+    this.poolY = undefined;
+    this.poolBounds = undefined;
+    this.waterBounds = undefined;
+    this.poolRimY = undefined;
+  }
+
+  /**
+   * Trigger short bob tween on the duck graphics
+   *
+   * Called when the player moves horizontally inside the pool
+   * Ignored if duck graphics no longer exist
+   */
+  private triggerDuckBob(): void {
+    if (!this.duckGraphics) return;
+
+    this.tweens.add({
+      targets: this.duckGraphics,
+      y: this.duckGraphics.y - this.POOL_BOB_AMPLITUDE,
+      duration: 150,
+      ease: 'Sine.InOut',
+      yoyo: true,
+      onComplete: () => {
+        if (this.duckGraphics) {
+          this.duckGraphics.y = this.duckBaseY;
+        }
+      },
+    });
+  }
+
+  /**
+   * Simulate disturbed water
+   *
+   * Trigger a brief horizontal scale pulse on pool graphics
+   */
+  private triggerWaterRipple(): void {
+    if (!this.waterGraphics) return;
+
+    this.tweens.add({
+      targets: this.waterGraphics,
+      scaleX: 1.03,
+      duration: 120,
+      ease: 'Sine.Out',
+      yoyo: true,
+    });
+  }
+
+  /**
+   * Called when player centre reaches the pool water rim
+   *
+   * Pins player at the water surface
+   * Cancels gravity and velocity so player floats
+   * Resets bob time so sine wave starts from pinned Y
+   * Record entry Y for splash tier calculation
+   * Trigger duck bob on entry
+   */
+  private handlePoolEntry(): void {
+    if (!this.player || !this.poolRimY) return;
+
+    this.isInPool = true;
+    this.poolBobTime = 0;
+    this.playerEntryY = this.player.y;
+
+    const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+    // Cancels all velocity and gravity so player floats
+    this.player.setVelocity(0, 0);
+    playerBody.setGravityY(-this.physics.world.gravity.y);
+
+    // Pin player to stable water surface position
+    this.playerPoolPinnedY = this.poolRimY - this.player.displayHeight * 0.6;
+    this.player.y = this.playerPoolPinnedY;
+
+    // Raise player depth. Render in front of pool shell, behind water surface and duck
+    this.player.setDepth(1.5);
+
+    this.triggerDuckBob();
+  }
+
+  /**
+   * Called when player jumps out of the pool
+   *
+   * Stops the bob tween. Restores gravity. Clears pool state
+   * Player depth stays at 1. Pool graphics at depth 2 handle the layering
+   */
+  private handlePoolExit(): void {
+    if (!this.player) return;
+
+    this.isInPool = false;
+    this.playerEntryY = undefined;
+    this.playerPoolPinnedY = undefined;
+    this.poolBobTime = 0;
+
+    // Restore normal gravity
+    const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+    playerBody.setGravityY(0);
+
+    // Restore player depth
+    this.player.setDepth(1);
+  }
+
+  /**
+   * Draws a pill/stadium shape — a rectangle with semicircular ends.
+   * Used to draw each inflatable ring of the pool.
+   *
+   * cx, cy — centre of the pill
+   * w — total width including rounded ends
+   * h — total height (diameter of semicircles = h)
+   * colour — fill colour
+   */
+  private drawPill(
+    graphics: Phaser.GameObjects.Graphics,
+    cx: number,
+    cy: number,
+    w: number,
+    h: number,
+    colour: number
+  ): void {
+    const radius = h / 2;
+    const rectWidth = w - h; // inner rectangle width, excluding the two semicircles
+
+    graphics.fillStyle(colour, 1);
+
+    // Centre rectangle
+    graphics.fillRect(cx - rectWidth / 2, cy - radius, rectWidth, h);
+
+    // Left semicircle
+    graphics.fillCircle(cx - rectWidth / 2, cy, radius);
+
+    // Right semicircle
+    graphics.fillCircle(cx + rectWidth / 2, cy, radius);
+  }
+
+  /**
+   * Draws pool with two stacked inflatable rings.
+   *
+   * Bottom ring: wider, taller, lime — POOL_COLOUR_BOTTOM
+   * Top ring: ellipse — POOL_COLOUR_TOP
+   *
+   * y is the pool centre.
+   */
+  private drawPool(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number
+  ): void {
+    const w = POOL_WIDTH;
+
+    // Bottom ring
+    const bottomRingY = y + this.POOL_BOTTOM_RING_Y_OFFSET + POOL_GROUND_EMBED;
+    this.drawPill(
+      graphics,
+      x,
+      bottomRingY,
+      w,
+      this.POOL_BOTTOM_RING_H,
+      POOL_COLOUR_BOTTOM
+    );
+
+    // Top ring
+    const topRingY = y - this.POOL_TOP_RING_Y_OFFSET;
+    graphics.fillStyle(POOL_COLOUR_TOP, 1);
+    graphics.fillEllipse(
+      x,
+      topRingY + this.POOL_TOP_RING_Y_INNER,
+      w - 2,
+      this.POOL_TOP_RING_H
+    );
+  }
+
+  /**
+   * Draws the water shadow ellipse.
+   * Sits on top of player during walk past.
+   * On top of player while in pool (created earlier)
+   */
+  private drawWaterShadow(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number
+  ): void {
+    const waterY = y - this.POOL_WATER_Y_OFFSET;
+    const waterW = POOL_WIDTH * this.POOL_WATER_WIDTH_RATIO;
+
+    graphics.fillStyle(POOL_COLOUR_SHADOW, 1);
+    graphics.fillEllipse(
+      x,
+      waterY + this.POOL_WATER_SHADOW_Y_INNER,
+      waterW,
+      this.POOL_WATER_SHADOW_H
+    );
+  }
+
+  /**
+   * Draws the water surface inside the top ring.
+   * A shadow sits just below to suggest depth.
+   * Always in front of the player.
+   *
+   * y is the pool centre.
+   */
+  private drawWaterSurface(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number
+  ): void {
+    const waterY = y - this.POOL_WATER_Y_OFFSET;
+    const waterW = POOL_WIDTH * this.POOL_WATER_WIDTH_RATIO;
+
+    graphics.fillStyle(POOL_WATER_COLOUR, POOL_WATER_ALPHA);
+    graphics.fillEllipse(
+      x,
+      waterY + this.POOL_WATER_Y_INNER,
+      waterW,
+      this.POOL_WATER_H
+    );
+  }
+
+  /**
+   * Draws a retro rubber duck floating in the water.
+   * Duck sits slightly right of centre so it reads clearly against the pool rim
+   */
+  private drawDuck(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number
+  ): void {
+    // Water surface Y. Duck floats at this level
+    const waterY = y - this.POOL_DUCK_WATER_Y_OFFSET;
+
+    // Duck offset: sits slightly right of pool centre
+    const duckX = x + this.POOL_DUCK_X_OFFSET;
+
+    // Body
+    graphics.fillStyle(this.DUCK_COLOUR, 1);
+    graphics.fillEllipse(duckX, waterY, 20, 11);
+
+    // Head
+    graphics.fillStyle(this.DUCK_COLOUR, 1);
+    graphics.fillCircle(duckX + 6, waterY - 8, 6);
+
+    // Bill
+    graphics.fillStyle(this.DUCK_BILL_COLOUR, 1);
+    graphics.fillRect(duckX + 10, waterY - 9, 5, 3);
+
+    // Eye
+    graphics.fillStyle(this.DUCK_EYE_COLOUR, 1);
+    graphics.fillCircle(duckX + 7, waterY - 9, 1.5);
+
+    // Wing
+    graphics.fillStyle(this.DUCK_WING_COLOUR, 1);
+    graphics.fillEllipse(duckX + 2, waterY + 1, 9, 5);
   }
 
   private navigateBack() {
@@ -1085,6 +1616,7 @@ export class MainScene extends Phaser.Scene {
       this.createContentPlatforms();
       this.createBrickPlatforms();
       this.createLadder();
+      this.createKiddiePool();
     } else if (!atTop && !this.isScrolled) {
       // Scrolled away from top -> clear platforms. Drop player to ground
       this.isScrolled = true;
@@ -1092,6 +1624,7 @@ export class MainScene extends Phaser.Scene {
       this.platformDebugGraphics?.clear();
       this.brickGroup?.clear(true, true); // clear bricks on scroll away
       this.clearLadder();
+      this.clearKiddiePool();
     }
   };
 
@@ -1101,5 +1634,6 @@ export class MainScene extends Phaser.Scene {
       this.handleContentScroll
     );
     this.clearLadder();
+    this.clearKiddiePool();
   }
 }
