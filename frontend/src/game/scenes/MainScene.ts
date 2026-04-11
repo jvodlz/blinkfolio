@@ -108,6 +108,10 @@ export class MainScene extends Phaser.Scene {
   private readonly POOL_WATER_SHADOW_H = 8;
   private readonly POOL_DUCK_X_OFFSET = 20; // duck offset to the right of pool centre
   private readonly POOL_DUCK_WATER_Y_OFFSET = 2;
+  private readonly POOL_BOB_AMPLITUDE = 3;
+  private readonly POOL_PLAYER_BOB_DURATION = 800;
+  private readonly POOL_PLAYER_BOB_SPEED = 15;
+  private readonly POOL_ENTRY_THRESHOLD = 20;
 
   // Duck
   private readonly DUCK_COLOUR = 0xf5d020;
@@ -148,11 +152,19 @@ export class MainScene extends Phaser.Scene {
   // Kiddie pool
   private poolDecision?: PoolDecision;
   private poolGraphics?: Phaser.GameObjects.Graphics;
+  private waterShadowGraphics?: Phaser.GameObjects.Graphics;
+  private waterGraphics?: Phaser.GameObjects.Graphics;
   private duckGraphics?: Phaser.GameObjects.Graphics;
+  private duckBaseY: number = 0;
   private poolX?: number;
   private poolY?: number;
   private poolBounds?: PoolBounds;
+  private waterBounds?: PoolBounds;
   private poolRimY?: number;
+  private isInPool: boolean = false;
+  private poolBobTime: number = 0;
+  private playerEntryY?: number;
+  private playerPoolPinnedY?: number;
 
   // Enemy
   private enemyGroup?: Phaser.Physics.Arcade.Group;
@@ -543,6 +555,33 @@ export class MainScene extends Phaser.Scene {
 
     if (this.player.x > rightBoundary) {
       this.player.x = rightBoundary;
+    }
+
+    /**
+     * Pool Entry Detection
+     *
+     * Triggers when player centre reaches or passes the water rim from above within ellipse X bounds
+     */
+    if (
+      this.poolRimY !== undefined &&
+      this.waterBounds !== undefined &&
+      !this.isInPool
+    ) {
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+      const withinWaterX =
+        this.player.x >= this.waterBounds.left &&
+        this.player.x <= this.waterBounds.right;
+
+      const isAirborne = !playerBody.blocked.down;
+
+      const nearRim =
+        playerBody.bottom >= this.poolRimY &&
+        playerBody.bottom <= this.poolRimY + this.POOL_ENTRY_THRESHOLD;
+
+      if (withinWaterX && isAirborne && nearRim && playerBody.velocity.y > 0) {
+        this.handlePoolEntry();
+      }
     }
 
     // Safety check for falling below screen
