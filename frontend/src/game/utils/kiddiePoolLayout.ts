@@ -32,6 +32,10 @@ export const POOL_RIM_Y_OFFSET = 10;
 // Inset: pool width overlaps the card boundary
 export const POOL_INSET_RATIO = 0.1;
 
+// Pool X breakpoints
+export const POOL_X_BREAKPOINT_SMALL = 768;
+export const POOL_X_BREAKPOINT_MEDIUM = 1028;
+
 // Splash thresholds
 export const SPLASH_THRESHOLD_MEDIUM = 100;
 export const SPLASH_THRESHOLD_LARGE = 250;
@@ -106,4 +110,25 @@ export function calcPoolBounds(poolX: number): PoolBounds {
     left: poolX - POOL_WIDTH / 2,
     right: poolX + POOL_WIDTH / 2,
   };
+}
+
+/**
+ * Calculates pool centre X for narrow viewports where ladder is hidden
+ *
+ * At <= POOL_X_BREAKPOINT_SMALL: pool sits at centre (side-agnostic)
+ * Between POOL_X_BREAKPOINT_SMALL and POOL_X_BREAKPOINT_MEDIUM:
+ *   right: pool sits 75% of viewport width
+ *   left: pool sits 25% of viewport width
+ *
+ * Only called when viewportWidth < MOBILE_POOL_BREAKPOINT_MEDIUM
+ * Pool is ground-anchored
+ */
+export function resolveMobilePoolX(
+  viewportWidth: number,
+  side: PoolSide
+): number {
+  if (viewportWidth <= POOL_X_BREAKPOINT_SMALL) {
+    return viewportWidth * 0.5;
+  }
+  return side === 'right' ? viewportWidth * 0.75 : viewportWidth * 0.25;
 }
