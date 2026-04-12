@@ -48,6 +48,7 @@ import {
   resolveMobilePoolX,
   POOL_X_BREAKPOINT_MEDIUM,
 } from '../utils/kiddiePoolLayout';
+import { InputController } from '../input/InputController';
 
 const BrickLayout = {
   None: 'NONE',
@@ -131,13 +132,7 @@ export class MainScene extends Phaser.Scene {
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd?: {
-    W: Phaser.Input.Keyboard.Key;
-    A: Phaser.Input.Keyboard.Key;
-    S: Phaser.Input.Keyboard.Key;
-    D: Phaser.Input.Keyboard.Key;
-  };
+  private inputController?: InputController;
 
   // Callbacks
   private onNavigateBack?: () => void;
@@ -367,36 +362,27 @@ export class MainScene extends Phaser.Scene {
   }
 
   private setupControls() {
-    // Arrow keys
-    this.cursors = this.input.keyboard?.createCursorKeys();
-
-    // WASD keys
-    if (this.input.keyboard) {
-      this.wasd = {
-        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      };
-    }
+    this.inputController = new InputController(this);
 
     // ESC key go back to Welcome Page
-    this.input.keyboard?.on('keydown-ESC', () => {
-      this.navigateBack();
-    });
+    this.inputController.setup(() => this.navigateBack());
   }
 
   update() {
-    if (!this.player || !this.cursors) return;
+    if (!this.player) return;
     if (this.isFainting) return;
 
     this.isOnLadder = false;
     const { width, height } = this.cameras.main;
 
-    const moveLeft = this.cursors.left.isDown || this.wasd?.A.isDown;
-    const moveRight = this.cursors.right.isDown || this.wasd?.D.isDown;
-    const climbUp = this.cursors.up.isDown || this.wasd?.W.isDown;
-    const climbDown = this.cursors.down.isDown || this.wasd?.S.isDown;
+    const inputState = this.inputController?.getState() ?? {
+      moveLeft: false,
+      moveRight: false,
+      jump: false,
+      climbUp: false,
+      climbDown: false,
+    };
+    const { moveLeft, moveRight, climbUp, climbDown } = inputState;
 
     // Climbing mode
     if (this.isClimbing) {
@@ -509,7 +495,7 @@ export class MainScene extends Phaser.Scene {
       }
 
       // Jump to exit pool
-      const jump = climbUp;
+      const jump = inputState.jump;
       if (jump) {
         this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
         this.player.play('jump-anim', true);
@@ -556,7 +542,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Jump
-    const jump = climbUp;
+    const jump = inputState.jump;
     if (jump && this.player.body && this.player.body.touching.down) {
       this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
@@ -1059,11 +1045,10 @@ export class MainScene extends Phaser.Scene {
 
     if (this.isClimbing) return;
 
-    const climbUp =
-      this.cursors?.up.isDown === true || this.wasd?.W.isDown === true;
-
-    const climbDown =
-      this.cursors?.down.isDown === true || this.wasd?.S.isDown === true;
+    const { climbUp, climbDown } = this.inputController?.getState() ?? {
+      climbUp: false,
+      climbDown: false,
+    };
 
     if (climbUp || climbDown) {
       this.isClimbing = true;
@@ -1745,6 +1730,7 @@ export class MainScene extends Phaser.Scene {
       'scroll',
       this.handleContentScroll
     );
+    this.inputController?.destroy();
     this.clearLadder();
     this.clearKiddiePool();
   }
