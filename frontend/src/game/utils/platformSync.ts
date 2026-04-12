@@ -13,6 +13,8 @@ export interface PlatformRect {
   height: number;
 }
 
+export const CARD_STACK_BELOW_WIDTH = 768;
+
 /**
  * Reads screen positions of DOM elements and converst them to Phaser-compatible platform descriptors.
  *

@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
-import { getPlatformRectsFromElements } from '../utils/platformSync';
+import {
+  getPlatformRectsFromElements,
+  CARD_STACK_BELOW_WIDTH,
+} from '../utils/platformSync';
 import {
   generateBrickLayout,
   type BrickLayoutConfig,
@@ -633,7 +636,7 @@ export class MainScene extends Phaser.Scene {
       document.querySelectorAll('[data-testid$="-section"]')
     );
 
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= CARD_STACK_BELOW_WIDTH) {
       return;
     }
 
