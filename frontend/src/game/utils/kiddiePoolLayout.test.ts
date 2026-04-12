@@ -11,6 +11,7 @@ import {
   POOL_GROUND_EMBED,
   SPLASH_THRESHOLD_MEDIUM,
   SPLASH_THRESHOLD_LARGE,
+  resolveMobilePoolX,
 } from './kiddiePoolLayout';
 import type { LadderDecision } from './ladderLayout';
 
@@ -109,5 +110,24 @@ describe('calcPoolBounds', () => {
   it('bounds width equals POOL_WIDTH', () => {
     const result = calcPoolBounds(200);
     expect(result.right - result.left).toBeCloseTo(POOL_WIDTH);
+  });
+});
+
+describe('resolveMobilePoolX', () => {
+  it('returns 50% of viewport width when width is <= 768', () => {
+    expect(resolveMobilePoolX(768, 'left')).toBeCloseTo(768 * 0.5);
+    expect(resolveMobilePoolX(768, 'right')).toBeCloseTo(768 * 0.5);
+    expect(resolveMobilePoolX(375, 'left')).toBeCloseTo(375 * 0.5);
+    expect(resolveMobilePoolX(375, 'right')).toBeCloseTo(375 * 0.5);
+  });
+
+  it('returns 75% of viewport width when width is between 769 and 1027 and side is right', () => {
+    expect(resolveMobilePoolX(769, 'right')).toBeCloseTo(769 * 0.75);
+    expect(resolveMobilePoolX(1000, 'right')).toBeCloseTo(1000 * 0.75);
+  });
+
+  it('returns 25% of viewport width when width is between 769 and 1027 and side is left', () => {
+    expect(resolveMobilePoolX(769, 'left')).toBeCloseTo(769 * 0.25);
+    expect(resolveMobilePoolX(1000, 'left')).toBeCloseTo(1000 * 0.25);
   });
 });

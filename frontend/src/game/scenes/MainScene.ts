@@ -42,6 +42,8 @@ import {
   POOL_GROUND_EMBED,
   calcSplashTier,
   type SplashTier,
+  resolveMobilePoolX,
+  POOL_X_BREAKPOINT_MEDIUM,
 } from '../utils/kiddiePoolLayout';
 
 const BrickLayout = {
@@ -1257,6 +1259,16 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * Pool is always visible unless the viewport is too narrow to be usable
+   *
+   * Pool persists on mobile viewports
+   * Mininum threshold matches the point where cards disappear entirely
+   */
+  private shouldShowPool(): boolean {
+    return window.innerWidth > 480;
+  }
+
+  /**
    * Draws the kiddie pool and duck from live DOM positions.
    *
    * Clears any existing pool
@@ -1265,7 +1277,7 @@ export class MainScene extends Phaser.Scene {
   private createKiddiePool(): void {
     this.clearKiddiePool();
 
-    if (!this.shouldShowLadder()) return;
+    if (!this.shouldShowPool()) return;
     if (!this.poolDecision) return;
 
     const sectionElements = Array.from(
@@ -1287,8 +1299,14 @@ export class MainScene extends Phaser.Scene {
     const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
     const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
 
-    const card = cardRects[this.poolDecision.cardIndex];
-    this.poolX = calcPoolX(card, this.poolDecision.side);
+    const viewportWidth = window.innerWidth;
+    if (viewportWidth < POOL_X_BREAKPOINT_MEDIUM) {
+      this.poolX = resolveMobilePoolX(viewportWidth, this.poolDecision.side);
+    } else {
+      const card = cardRects[this.poolDecision.cardIndex];
+      this.poolX = calcPoolX(card, this.poolDecision.side);
+    }
+
     this.poolY = calcPoolY(groundTopY);
     this.poolBounds = calcPoolBounds(this.poolX);
     const waterWidth = POOL_WIDTH * this.POOL_WATER_WIDTH_RATIO;
@@ -1703,7 +1721,9 @@ export class MainScene extends Phaser.Scene {
       this.createContentPlatforms();
       this.createBrickPlatforms();
       this.createLadder();
-      this.createKiddiePool();
+      if (window.innerWidth >= POOL_X_BREAKPOINT_MEDIUM) {
+        this.createKiddiePool();
+      }
     } else if (!atTop && !this.isScrolled) {
       // Scrolled away from top -> clear platforms. Drop player to ground
       this.isScrolled = true;
@@ -1711,7 +1731,9 @@ export class MainScene extends Phaser.Scene {
       this.platformDebugGraphics?.clear();
       this.brickGroup?.clear(true, true); // clear bricks on scroll away
       this.clearLadder();
-      this.clearKiddiePool();
+      if (window.innerWidth >= POOL_X_BREAKPOINT_MEDIUM) {
+        this.clearKiddiePool();
+      }
     }
   };
 
