@@ -12,9 +12,10 @@ export interface InputState {
 }
 
 /**
- * Mininum pixel distance travelled to register swipe
+ * Constants
  */
-const SWIPE_MIN_DELTA = 20;
+const SWIPE_MIN_DELTA = 20; // Mininum pixel distance travelled to register swipe
+const TOUCH_MOVE_LATCH_MS = 300;
 
 /**
  * InputController
@@ -44,6 +45,10 @@ export class InputController {
 
   // Pending touch-derived state. Consumed once per swipe
   private pendingState: InputState = InputController.emptyState();
+
+  private latchedMoveLeft: boolean = false;
+  private latchedMoveRight: boolean = false;
+  private latchClearTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * Construction & setup
@@ -166,6 +171,25 @@ export class InputController {
     }
 
     this.pendingState = next;
+
+    /**
+     * Latch horizontal movement for TOUCH_MOVE_LATCH_MS
+     * Clears any previous latch before starting a new one
+     **/
+    if (next.moveLeft || next.moveRight) {
+      this.latchedMoveLeft = next.moveLeft;
+      this.latchedMoveRight = next.moveRight;
+
+      if (this.latchClearTimer !== undefined) {
+        clearTimeout(this.latchClearTimer);
+      }
+
+      this.latchClearTimer = setTimeout(() => {
+        this.latchedMoveLeft = false;
+        this.latchedMoveRight = false;
+        this.latchClearTimer = undefined;
+      }, TOUCH_MOVE_LATCH_MS);
+    }
   };
 
   /**
@@ -188,8 +212,8 @@ export class InputController {
     this.pendingState = InputController.emptyState();
 
     return {
-      moveLeft: kb.moveLeft || touch.moveLeft,
-      moveRight: kb.moveRight || touch.moveRight,
+      moveLeft: kb.moveLeft || touch.moveLeft || this.latchedMoveLeft,
+      moveRight: kb.moveRight || touch.moveRight || this.latchedMoveRight,
       jump: kb.jump || touch.jump,
       climbUp: kb.climbUp || touch.climbUp,
       climbDown: kb.climbDown || touch.climbDown,
@@ -226,6 +250,9 @@ export class InputController {
    * Removes all touch listeners from the canvas.
    */
   destroy(): void {
+    if (this.latchClearTimer !== undefined) {
+      clearTimeout(this.latchClearTimer);
+    }
     const canvas = this.scene.sys.game.canvas;
     canvas.removeEventListener('touchstart', this.handleTouchStart);
     canvas.removeEventListener('touchend', this.handleTouchEnd);
