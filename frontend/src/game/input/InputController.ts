@@ -16,6 +16,7 @@ export interface InputState {
  */
 const SWIPE_MIN_DELTA = 20; // Mininum pixel distance travelled to register swipe
 const TOUCH_MOVE_LATCH_MS = 300;
+const TOUCH_TAP_LATCH_MS = 150;
 
 /**
  * InputController
@@ -121,6 +122,38 @@ export class InputController {
    */
 
   /**
+   * Resolve a tap gesture into a directional movement latch.
+   *
+   * Left half of canvas -> moveLeft
+   * Right half of canvas -> moveRigh
+   * Latch duration is shorter than a swipe; keep taps snappy
+   */
+  private handleTap = (tapX: number): void => {
+    const canvas = this.scene.sys.game.canvas;
+    const canvasCentreX =
+      canvas.getBoundingClientRect().left + canvas.width / 2;
+
+    const next = InputController.emptyState();
+    next.moveLeft = tapX < canvasCentreX;
+    next.moveRight = tapX >= canvasCentreX;
+
+    this.pendingState = next;
+
+    if (this.latchClearTimer !== undefined) {
+      clearTimeout(this.latchClearTimer);
+    }
+
+    this.latchedMoveLeft = next.moveLeft;
+    this.latchedMoveRight = next.moveRight;
+
+    this.latchClearTimer = setTimeout(() => {
+      this.latchedMoveLeft = false;
+      this.latchedMoveRight = false;
+      this.latchClearTimer = undefined;
+    }, TOUCH_TAP_LATCH_MS);
+  };
+
+  /**
    * Records finger starting position when touch begins.
    * Arrow function syntax binds `this` at definition time
    * Methods can be used directly as an event listener sans .bind(this) gymnastics
@@ -146,7 +179,10 @@ export class InputController {
     const absDy = Math.abs(dy);
     const totalDelta = Math.sqrt(dx * dx + dy * dy);
 
-    if (totalDelta < SWIPE_MIN_DELTA) return;
+    if (totalDelta < SWIPE_MIN_DELTA) {
+      this.handleTap(touch.clientX);
+      return;
+    }
 
     const isDiagonal = absDx >= SWIPE_MIN_DELTA && absDy >= SWIPE_MIN_DELTA;
     const isPureHorizontal =
