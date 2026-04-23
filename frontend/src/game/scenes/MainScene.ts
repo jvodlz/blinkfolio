@@ -1253,7 +1253,7 @@ export class MainScene extends Phaser.Scene {
    * Mininum threshold matches the point where cards disappear entirely
    */
   private shouldShowPool(): boolean {
-    return window.innerWidth > 480;
+    return window.innerWidth > 360;
   }
 
   /**
