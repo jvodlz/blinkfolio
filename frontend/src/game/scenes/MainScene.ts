@@ -133,6 +133,7 @@ export class MainScene extends Phaser.Scene {
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
   private inputController?: InputController;
+  private backButton?: Phaser.GameObjects.Image;
 
   // Callbacks
   private onNavigateBack?: () => void;
@@ -233,6 +234,9 @@ export class MainScene extends Phaser.Scene {
       graphics.generateTexture(this.SPLASH_TEXTURE_KEY, 6, 6);
       graphics.destroy();
     }
+
+    // Arrow Signpost
+    this.load.image('back-button', '/assets/ui/arrow-left.png');
   }
 
   create() {
@@ -311,6 +315,7 @@ export class MainScene extends Phaser.Scene {
     this.player.play('idle-anim');
 
     this.setupControls();
+    this.createBackButton();
 
     // Handle window resize
     this.scale.on('resize', this.handleResize, this);
@@ -358,6 +363,60 @@ export class MainScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 7 }),
       frameRate: 8,
       repeat: -1,
+    });
+  }
+
+  /**
+   * Create Arrow Signpost to go back to Welcome Scene for touch devices
+   *
+   * Only rendered on touch-capable devices
+   * Pinned to the left edge of platform
+   * Safe to call on resize. Destroys and recreates the button each time
+   */
+  private createBackButton(): void {
+    // Destroys existing button before recreating on resize
+    if (this.backButton) {
+      this.backButton.destroy();
+      this.backButton = undefined;
+    }
+
+    // Touch devices only
+    if (!this.sys.game.device.input.touch) return;
+
+    const { height } = this.cameras.main;
+    const groundCenterY = this.getGroundCenterY(height);
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+
+    this.backButton = this.add.image(0, 0, 'back-button');
+    this.backButton.setScale(2);
+    this.backButton.setDepth(4);
+
+    // Sign placement
+    const buttonX = scaledBrickSize + this.backButton.displayWidth / 2;
+    const buttonY = groundTopY - this.backButton.displayHeight / 2;
+    this.backButton.setPosition(buttonX, buttonY);
+
+    this.backButton.setInteractive();
+    this.backButton.on('pointerdown', () => {
+      // Prevent double-firing if tapped rapidly
+      if (!this.backButton) return;
+
+      this.backButton.disableInteractive();
+
+      this.tweens.add({
+        targets: this.backButton,
+        scaleX: 1.6,
+        scaleY: 1.6,
+        duration: 100,
+        ease: 'Sine.In',
+        yoyo: true,
+        onComplete: () => {
+          this.navigateBack();
+        },
+      });
     });
   }
 
@@ -1195,6 +1254,7 @@ export class MainScene extends Phaser.Scene {
     this.createBrickPlatforms();
     this.createLadder();
     this.createKiddiePool();
+    this.createBackButton();
   }
 
   private getGroundCenterY(height: number): number {
