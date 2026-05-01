@@ -424,7 +424,7 @@ export class MainScene extends Phaser.Scene {
 
     this.backButton = this.add.image(0, 0, 'back-button');
     this.backButton.setScale(2);
-    this.backButton.setDepth(4);
+    this.backButton.setDepth(0.5);
 
     // Sign placement
     const buttonX = scaledBrickSize + this.backButton.displayWidth / 2;
@@ -446,6 +446,7 @@ export class MainScene extends Phaser.Scene {
         this.player.x <= this.backButtonX
       ) {
         this.triggerBackButtonTween();
+        return;
       }
 
       this.isWalkingToSign = true;
