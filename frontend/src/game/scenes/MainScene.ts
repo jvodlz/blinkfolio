@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MOBILE_MAX_WIDTH } from '../constants';
 import {
   getPlatformRectsFromElements,
   CARD_STACK_BELOW_WIDTH,
@@ -177,6 +178,8 @@ export class MainScene extends Phaser.Scene {
 
   // Player state
   private isFainting: boolean = false;
+  private isWalkingToSign: boolean = false;
+  private backButtonX?: number;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -367,6 +370,32 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * Fires left arrow sign press tween then navigate to Welcome Scene
+   *
+   * Called when player reaches the button or is already close enough.
+   * Player is stopped and idled between tween fires for a clean visual beat.
+   */
+  private triggerBackButtonTween(): void {
+    if (!this.backButton) return;
+
+    // Stop player and return to idle
+    this.player?.setVelocityX(0);
+    this.player?.play('idle-anim', true);
+
+    this.tweens.add({
+      targets: this.backButton,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      duration: 100,
+      ease: 'Sine.In',
+      yoyo: true,
+      onComplete: () => {
+        this.navigateBack();
+      },
+    });
+  }
+
+  /**
    * Create Arrow Signpost to go back to Welcome Scene for touch devices
    *
    * Only rendered on touch-capable devices
@@ -378,10 +407,13 @@ export class MainScene extends Phaser.Scene {
     if (this.backButton) {
       this.backButton.destroy();
       this.backButton = undefined;
+      this.backButtonX = undefined;
+      this.isWalkingToSign = false;
     }
 
-    // Touch devices only
+    // Mobile touch devices only
     if (!this.sys.game.device.input.touch) return;
+    if (window.innerWidth > MOBILE_MAX_WIDTH) return;
 
     const { height } = this.cameras.main;
     const groundCenterY = this.getGroundCenterY(height);
@@ -398,6 +430,7 @@ export class MainScene extends Phaser.Scene {
     const buttonX = scaledBrickSize + this.backButton.displayWidth / 2;
     const buttonY = groundTopY - this.backButton.displayHeight / 2;
     this.backButton.setPosition(buttonX, buttonY);
+    this.backButtonX = buttonX;
 
     this.backButton.setInteractive();
     this.backButton.on('pointerdown', () => {
@@ -406,17 +439,16 @@ export class MainScene extends Phaser.Scene {
 
       this.backButton.disableInteractive();
 
-      this.tweens.add({
-        targets: this.backButton,
-        scaleX: 1.6,
-        scaleY: 1.6,
-        duration: 100,
-        ease: 'Sine.In',
-        yoyo: true,
-        onComplete: () => {
-          this.navigateBack();
-        },
-      });
+      // If player is at or past the left of arrow signpost, navigate immediately
+      if (
+        this.player &&
+        this.backButtonX !== undefined &&
+        this.player.x <= this.backButtonX
+      ) {
+        this.triggerBackButtonTween();
+      }
+
+      this.isWalkingToSign = true;
     });
   }
 
@@ -430,6 +462,24 @@ export class MainScene extends Phaser.Scene {
   update() {
     if (!this.player) return;
     if (this.isFainting) return;
+
+    // Walk player to left arrown signpost before navigating
+    if (this.isWalkingToSign && this.backButtonX !== undefined) {
+      const distanceToSign = this.player.x - this.backButtonX;
+
+      if (distanceToSign <= 8) {
+        // Player arrived. Stop, idle, trigger
+        this.isWalkingToSign = false;
+        this.triggerBackButtonTween();
+        return;
+      }
+
+      // Force walk left toward button
+      this.player.setVelocityX(-this.PLAYER_SPEED);
+      this.player.setFlipX(true);
+      this.player.play('walk-anim', true);
+      return;
+    }
 
     this.isOnLadder = false;
     const { width, height } = this.cameras.main;
