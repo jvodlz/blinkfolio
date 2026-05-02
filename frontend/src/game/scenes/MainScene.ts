@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MOBILE_MAX_WIDTH } from '../constants';
 import {
   getPlatformRectsFromElements,
   CARD_STACK_BELOW_WIDTH,
@@ -48,6 +49,7 @@ import {
   resolveMobilePoolX,
   POOL_X_BREAKPOINT_MEDIUM,
 } from '../utils/kiddiePoolLayout';
+import { InputController } from '../input/InputController';
 
 const BrickLayout = {
   None: 'NONE',
@@ -131,13 +133,8 @@ export class MainScene extends Phaser.Scene {
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd?: {
-    W: Phaser.Input.Keyboard.Key;
-    A: Phaser.Input.Keyboard.Key;
-    S: Phaser.Input.Keyboard.Key;
-    D: Phaser.Input.Keyboard.Key;
-  };
+  private inputController?: InputController;
+  private backButton?: Phaser.GameObjects.Image;
 
   // Callbacks
   private onNavigateBack?: () => void;
@@ -181,6 +178,8 @@ export class MainScene extends Phaser.Scene {
 
   // Player state
   private isFainting: boolean = false;
+  private isWalkingToSign: boolean = false;
+  private backButtonX?: number;
 
   private contentAreaElement?: Element;
   private isScrolled: boolean = false;
@@ -238,6 +237,9 @@ export class MainScene extends Phaser.Scene {
       graphics.generateTexture(this.SPLASH_TEXTURE_KEY, 6, 6);
       graphics.destroy();
     }
+
+    // Arrow Signpost
+    this.load.image('back-button', '/assets/ui/arrow-left.png');
   }
 
   create() {
@@ -316,6 +318,7 @@ export class MainScene extends Phaser.Scene {
     this.player.play('idle-anim');
 
     this.setupControls();
+    this.createBackButton();
 
     // Handle window resize
     this.scale.on('resize', this.handleResize, this);
@@ -366,37 +369,130 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  private setupControls() {
-    // Arrow keys
-    this.cursors = this.input.keyboard?.createCursorKeys();
+  /**
+   * Fires left arrow sign press tween then navigate to Welcome Scene
+   *
+   * Called when player reaches the button or is already close enough.
+   * Player is stopped and idled between tween fires for a clean visual beat.
+   */
+  private triggerBackButtonTween(): void {
+    if (!this.backButton) return;
 
-    // WASD keys
-    if (this.input.keyboard) {
-      this.wasd = {
-        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      };
-    }
+    // Stop player and return to idle
+    this.player?.setVelocityX(0);
+    this.player?.play('idle-anim', true);
 
-    // ESC key go back to Welcome Page
-    this.input.keyboard?.on('keydown-ESC', () => {
-      this.navigateBack();
+    this.tweens.add({
+      targets: this.backButton,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      duration: 100,
+      ease: 'Sine.In',
+      yoyo: true,
+      onComplete: () => {
+        this.navigateBack();
+      },
     });
   }
 
+  /**
+   * Create Arrow Signpost to go back to Welcome Scene for touch devices
+   *
+   * Only rendered on touch-capable devices
+   * Pinned to the left edge of platform
+   * Safe to call on resize. Destroys and recreates the button each time
+   */
+  private createBackButton(): void {
+    // Destroys existing button before recreating on resize
+    if (this.backButton) {
+      this.backButton.destroy();
+      this.backButton = undefined;
+      this.backButtonX = undefined;
+      this.isWalkingToSign = false;
+    }
+
+    // Mobile touch devices only
+    if (!this.sys.game.device.input.touch) return;
+    if (window.innerWidth > MOBILE_MAX_WIDTH) return;
+
+    const { height } = this.cameras.main;
+    const groundCenterY = this.getGroundCenterY(height);
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    const scaledBrickSize =
+      this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
+
+    this.backButton = this.add.image(0, 0, 'back-button');
+    this.backButton.setScale(2);
+    this.backButton.setDepth(0.5);
+
+    // Sign placement
+    const buttonX = scaledBrickSize + this.backButton.displayWidth / 2;
+    const buttonY = groundTopY - this.backButton.displayHeight / 2;
+    this.backButton.setPosition(buttonX, buttonY);
+    this.backButtonX = buttonX;
+
+    this.backButton.setInteractive();
+    this.backButton.on('pointerdown', () => {
+      // Prevent double-firing if tapped rapidly
+      if (!this.backButton) return;
+
+      this.backButton.disableInteractive();
+
+      // If player is at or past the left of arrow signpost, navigate immediately
+      if (
+        this.player &&
+        this.backButtonX !== undefined &&
+        this.player.x <= this.backButtonX
+      ) {
+        this.triggerBackButtonTween();
+        return;
+      }
+
+      this.isWalkingToSign = true;
+    });
+  }
+
+  private setupControls() {
+    this.inputController = new InputController(this);
+
+    // ESC key go back to Welcome Page
+    this.inputController.setup(() => this.navigateBack());
+  }
+
   update() {
-    if (!this.player || !this.cursors) return;
+    if (!this.player) return;
     if (this.isFainting) return;
+
+    // Walk player to left arrown signpost before navigating
+    if (this.isWalkingToSign && this.backButtonX !== undefined) {
+      const distanceToSign = this.player.x - this.backButtonX;
+
+      if (distanceToSign <= 8) {
+        // Player arrived. Stop, idle, trigger
+        this.isWalkingToSign = false;
+        this.triggerBackButtonTween();
+        return;
+      }
+
+      // Force walk left toward button
+      this.player.setVelocityX(-this.PLAYER_SPEED);
+      this.player.setFlipX(true);
+      this.player.play('walk-anim', true);
+      return;
+    }
 
     this.isOnLadder = false;
     const { width, height } = this.cameras.main;
 
-    const moveLeft = this.cursors.left.isDown || this.wasd?.A.isDown;
-    const moveRight = this.cursors.right.isDown || this.wasd?.D.isDown;
-    const climbUp = this.cursors.up.isDown || this.wasd?.W.isDown;
-    const climbDown = this.cursors.down.isDown || this.wasd?.S.isDown;
+    const inputState = this.inputController?.getState() ?? {
+      moveLeft: false,
+      moveRight: false,
+      jump: false,
+      climbUp: false,
+      climbDown: false,
+    };
+    const { moveLeft, moveRight, climbUp, climbDown } = inputState;
 
     // Climbing mode
     if (this.isClimbing) {
@@ -509,7 +605,7 @@ export class MainScene extends Phaser.Scene {
       }
 
       // Jump to exit pool
-      const jump = climbUp;
+      const jump = inputState.jump;
       if (jump) {
         this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
         this.player.play('jump-anim', true);
@@ -556,7 +652,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Jump
-    const jump = climbUp;
+    const jump = inputState.jump;
     if (jump && this.player.body && this.player.body.touching.down) {
       this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
@@ -1059,11 +1155,10 @@ export class MainScene extends Phaser.Scene {
 
     if (this.isClimbing) return;
 
-    const climbUp =
-      this.cursors?.up.isDown === true || this.wasd?.W.isDown === true;
-
-    const climbDown =
-      this.cursors?.down.isDown === true || this.wasd?.S.isDown === true;
+    const { climbUp, climbDown } = this.inputController?.getState() ?? {
+      climbUp: false,
+      climbDown: false,
+    };
 
     if (climbUp || climbDown) {
       this.isClimbing = true;
@@ -1210,6 +1305,7 @@ export class MainScene extends Phaser.Scene {
     this.createBrickPlatforms();
     this.createLadder();
     this.createKiddiePool();
+    this.createBackButton();
   }
 
   private getGroundCenterY(height: number): number {
@@ -1268,7 +1364,7 @@ export class MainScene extends Phaser.Scene {
    * Mininum threshold matches the point where cards disappear entirely
    */
   private shouldShowPool(): boolean {
-    return window.innerWidth > 480;
+    return window.innerWidth > 360;
   }
 
   /**
@@ -1745,6 +1841,7 @@ export class MainScene extends Phaser.Scene {
       'scroll',
       this.handleContentScroll
     );
+    this.inputController?.destroy();
     this.clearLadder();
     this.clearKiddiePool();
   }
