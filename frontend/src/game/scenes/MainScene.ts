@@ -239,7 +239,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Arrow Signpost
-    this.load.image('back-button', '/assets/ui/arrow-left.png');
+    this.load.image('arrow-sign', '/assets/ui/arrow-left.png');
   }
 
   create() {
@@ -422,7 +422,7 @@ export class MainScene extends Phaser.Scene {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
 
-    this.backButton = this.add.image(0, 0, 'back-button');
+    this.backButton = this.add.image(0, 0, 'arrow-sign');
     this.backButton.setScale(2);
     this.backButton.setDepth(0.5);
 
