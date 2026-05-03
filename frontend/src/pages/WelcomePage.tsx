@@ -4,6 +4,7 @@ import { Game } from '../game/Game';
 import { WelcomeScene } from '../game/scenes/WelcomeScene';
 import { useNavigate } from 'react-router-dom';
 import './WelcomePage.css';
+import { MOBILE_MAX_WIDTH } from '../game/constants';
 
 export function WelcomePage() {
   const [messageIndex, setMessageIndex] = useState(0);
@@ -56,7 +57,11 @@ export function WelcomePage() {
 
       {/* Navigation hint */}
       <div className="navigation-hint">
-        <p>Press SPACE or walk right →</p>
+        <p>
+          {window.innerWidth <= MOBILE_MAX_WIDTH
+            ? 'TAP the signpost or WALK right →'
+            : 'Press SPACE or walk right →'}
+        </p>
       </div>
     </div>
   );
