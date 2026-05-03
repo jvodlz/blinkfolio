@@ -17,9 +17,15 @@ export class WelcomeScene extends Phaser.Scene {
   private readonly PLAYER_BODY_OFFSET_X = 11;
   private readonly PLAYER_BODY_OFFSET_Y = 17;
 
+  // Signpost
+  private readonly SIGN_EDGE_INSET = 40;
+
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
   private inputController?: InputController;
+  private forwardButton?: Phaser.GameObjects.Image;
+  private forwardButtonX?: number;
+  private isWalkingToSign: boolean = false;
   private onNavigate?: () => void;
 
   constructor() {
@@ -80,6 +86,7 @@ export class WelcomeScene extends Phaser.Scene {
     this.player.play('idle-anim');
 
     this.setupControls();
+    this.createForwardButton();
 
     this.scale.on('resize', this.handleResize, this);
   }
@@ -106,7 +113,7 @@ export class WelcomeScene extends Phaser.Scene {
   }
 
   /**
-   * Wires InputController for movement and touch input
+   * Wires InputController for movement and touch input.
    *
    * ESC is a no-op in this scene
    * SPACE navigates forward directly
@@ -119,10 +126,122 @@ export class WelcomeScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-SPACE', () => this.navigateToMainPage());
   }
 
+  /**
+   * Shared signpost tween.
+   *
+   * Stops player, plays idle, fires a scale pulse on the sign
+   * Calls onComplete to trigger navigation
+   *
+   * @param button - the signpost image
+   * @param onComplete - navigation callback fired after tween finishes
+   */
+  private triggerSignpostTween(
+    button: Phaser.GameObjects.Image,
+    onComplete: () => void
+  ): void {
+    this.player?.setVelocityX(0);
+    this.player?.play('idle-anim', true);
+
+    this.tweens.add({
+      targets: button,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      duration: 100,
+      ease: 'Sine.In',
+      yoyo: true,
+      onComplete,
+    });
+  }
+
+  /**
+   * Fires the signpost tween then navigates to MainScene.
+   * Called when player reaches the forward button or is already close enough
+   */
+  private triggerForwardButtonTween(): void {
+    if (!this.forwardButton) return;
+    this.triggerSignpostTween(this.forwardButton, () =>
+      this.navigateToMainPage()
+    );
+  }
+
+  /**
+   * Creates right arrow signpost to navigate to MainScene.
+   *
+   * Only rendered on touch-capable mobile devices
+   * Pinned to right edge of ground platform
+   * Safe to call on resize. Destroys and recreates each time
+   * Uses the shared arrow-sign texture, flipped horizontally
+   */
+  private createForwardButton(): void {
+    // Destroy existing button before recreating on resize
+    if (this.forwardButton) {
+      this.forwardButton.destroy();
+      this.forwardButton = undefined;
+      this.forwardButtonX = undefined;
+      this.isWalkingToSign = false;
+    }
+
+    // Mobile touch devices only
+    if (!this.sys.game.device.input.touch) return;
+    if (window.innerWidth > MOBILE_MAX_WIDTH) return;
+
+    const { width, height } = this.cameras.main;
+    const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    this.forwardButton = this.add.image(0, 0, 'arrow-sign');
+    this.forwardButton.setScale(2);
+    this.forwardButton.setDepth(0.5);
+    this.forwardButton.setFlipX(true);
+
+    const buttonX =
+      width - this.SIGN_EDGE_INSET - this.forwardButton.displayWidth / 2;
+    const buttonY = groundTopY - this.forwardButton.displayHeight / 2;
+    this.forwardButton.setPosition(buttonX, buttonY);
+    this.forwardButtonX = buttonX;
+
+    this.forwardButton.setInteractive();
+    this.forwardButton.on('pointerdown', () => {
+      if (!this.forwardButton) return;
+
+      // Prevent double-firing if tapped rapidly
+      this.forwardButton.disableInteractive();
+
+      // If player is already at or past the sign, navigate immediately
+      if (
+        this.player &&
+        this.forwardButtonX !== undefined &&
+        this.player.x >= this.forwardButtonX
+      ) {
+        this.triggerForwardButtonTween();
+        return;
+      }
+      this.isWalkingToSign = true;
+    });
+  }
+
   update() {
     if (!this.player) return;
 
     const { width, height } = this.cameras.main;
+
+    // Walk player to signpost before navigating
+    if (this.isWalkingToSign && this.forwardButtonX !== undefined) {
+      const distanceToSign = this.forwardButtonX - this.player.x;
+
+      if (distanceToSign <= 8) {
+        // Player arrived - stop, idle, trigger
+        this.isWalkingToSign = false;
+        this.triggerForwardButtonTween();
+        return;
+      }
+
+      // Force walk right toward button
+      this.player.setVelocityX(this.PLAYER_SPEED);
+      this.player.setFlipX(false);
+      this.player.play('walk-anim', true);
+      return;
+    }
 
     const inputState = this.inputController?.getState() ?? {
       moveLeft: false,
@@ -159,10 +278,14 @@ export class WelcomeScene extends Phaser.Scene {
 
     // Jump - W and Up Arrow Only
     const canJump = this.player.body?.touching.down ?? false;
-    const jumpKeys =
+    const keyboardJump =
       this.inputController?.['cursors']?.up.isDown === true ||
       this.inputController?.['wasd']?.W.isDown === true;
-    if (jumpKeys && canJump) {
+
+    // Jump: diagonal and upward swipes via InputController
+    const touchJump = inputState.jump;
+
+    if ((keyboardJump || touchJump) && canJump) {
       this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
     }
@@ -213,6 +336,8 @@ export class WelcomeScene extends Phaser.Scene {
       this.player.y = height - 80;
       this.player.setVelocityY(0);
     }
+
+    this.createForwardButton();
   }
 
   private navigateToMainPage() {
