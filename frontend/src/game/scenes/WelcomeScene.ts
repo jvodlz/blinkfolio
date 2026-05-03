@@ -1,26 +1,31 @@
 import Phaser from 'phaser';
+import { MOBILE_MAX_WIDTH } from '../constants';
+import { InputController } from '../input/InputController';
 
 export class WelcomeScene extends Phaser.Scene {
   private readonly GROUND_HEIGHT = 40;
   private readonly GROUND_OFFSET_FROM_BOTTOM = 20;
 
-  // Player constants
+  // Player
   private readonly PLAYER_SCALE = 2.5;
-  private readonly PLAYER_BODY_WIDTH_OFFSET = 22; // difference between sprite and collision body
   private readonly PLAYER_SPEED = 200;
   private readonly PLAYER_JUMP_VELOCITY = -400;
   private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
   private readonly NAVIGATION_TRIGGER_RATIO = 0.2; // fraction of body width past right edge to trigger navigation
+  private readonly PLAYER_BODY_WIDTH = 10;
+  private readonly PLAYER_BODY_HEIGHT = 15;
+  private readonly PLAYER_BODY_OFFSET_X = 11;
+  private readonly PLAYER_BODY_OFFSET_Y = 17;
+
+  // Signpost
+  private readonly SIGN_EDGE_INSET = 40;
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private ground?: Phaser.GameObjects.Rectangle;
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd?: {
-    W: Phaser.Input.Keyboard.Key;
-    A: Phaser.Input.Keyboard.Key;
-    S: Phaser.Input.Keyboard.Key;
-    D: Phaser.Input.Keyboard.Key;
-  };
+  private inputController?: InputController;
+  private forwardButton?: Phaser.GameObjects.Image;
+  private forwardButtonX?: number;
+  private isWalkingToSign: boolean = false;
   private onNavigate?: () => void;
 
   constructor() {
@@ -44,6 +49,9 @@ export class WelcomeScene extends Phaser.Scene {
       frameWidth: 32,
       frameHeight: 32,
     });
+
+    // Arrow Signpost
+    this.load.image('arrow-sign', '/assets/ui/arrow-left.png');
   }
 
   create() {
@@ -66,9 +74,24 @@ export class WelcomeScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(startX, -100, 'idle');
     this.player.setScale(this.PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
+    this.player.setDepth(1);
+
+    // Fit physics body to player
+    this.player.setBodySize(this.PLAYER_BODY_WIDTH, this.PLAYER_BODY_HEIGHT);
+    this.player.setOffset(this.PLAYER_BODY_OFFSET_X, this.PLAYER_BODY_OFFSET_Y);
+
     this.physics.add.collider(this.player, this.ground);
 
-    // Animations
+    this.createAnimations();
+    this.player.play('idle-anim');
+
+    this.setupControls();
+    this.createForwardButton();
+
+    this.scale.on('resize', this.handleResize, this);
+  }
+
+  private createAnimations(): void {
     this.anims.create({
       key: 'idle-anim',
       frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 5 }),
@@ -78,44 +101,161 @@ export class WelcomeScene extends Phaser.Scene {
     this.anims.create({
       key: 'walk-anim',
       frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 5 }),
-      frameRate: 10,
+      frameRate: 8,
       repeat: -1,
     });
     this.anims.create({
       key: 'jump-anim',
       frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 5 }),
-      frameRate: 12,
+      frameRate: 8,
       repeat: -1,
     });
+  }
 
-    this.player.play('idle-anim');
+  /**
+   * Wires InputController for movement and touch input.
+   *
+   * ESC is a no-op in this scene
+   * SPACE navigates forward directly
+   * Jump input from InputController is intentionally ignored
+   */
+  private setupControls(): void {
+    this.inputController = new InputController(this);
+    this.inputController.setup(() => {});
 
-    // Controls
-    this.cursors = this.input.keyboard?.createCursorKeys();
-    if (this.input.keyboard) {
-      this.wasd = {
-        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      };
-    }
     this.input.keyboard?.on('keydown-SPACE', () => this.navigateToMainPage());
+  }
 
-    this.scale.on('resize', this.handleResize, this);
+  /**
+   * Shared signpost tween.
+   *
+   * Stops player, plays idle, fires a scale pulse on the sign
+   * Calls onComplete to trigger navigation
+   *
+   * @param button - the signpost image
+   * @param onComplete - navigation callback fired after tween finishes
+   */
+  private triggerSignpostTween(
+    button: Phaser.GameObjects.Image,
+    onComplete: () => void
+  ): void {
+    this.player?.setVelocityX(0);
+    this.player?.play('idle-anim', true);
+
+    this.tweens.add({
+      targets: button,
+      scaleX: 1.6,
+      scaleY: 1.6,
+      duration: 100,
+      ease: 'Sine.In',
+      yoyo: true,
+      onComplete,
+    });
+  }
+
+  /**
+   * Fires the signpost tween then navigates to MainScene.
+   * Called when player reaches the forward button or is already close enough
+   */
+  private triggerForwardButtonTween(): void {
+    if (!this.forwardButton) return;
+    this.triggerSignpostTween(this.forwardButton, () =>
+      this.navigateToMainPage()
+    );
+  }
+
+  /**
+   * Creates right arrow signpost to navigate to MainScene.
+   *
+   * Only rendered on touch-capable mobile devices
+   * Pinned to right edge of ground platform
+   * Safe to call on resize. Destroys and recreates each time
+   * Uses the shared arrow-sign texture, flipped horizontally
+   */
+  private createForwardButton(): void {
+    // Destroy existing button before recreating on resize
+    if (this.forwardButton) {
+      this.forwardButton.destroy();
+      this.forwardButton = undefined;
+      this.forwardButtonX = undefined;
+      this.isWalkingToSign = false;
+    }
+
+    // Mobile touch devices only
+    if (!this.sys.game.device.input.touch) return;
+    if (window.innerWidth > MOBILE_MAX_WIDTH) return;
+
+    const { width, height } = this.cameras.main;
+    const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
+    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+
+    this.forwardButton = this.add.image(0, 0, 'arrow-sign');
+    this.forwardButton.setScale(2);
+    this.forwardButton.setDepth(0.5);
+    this.forwardButton.setFlipX(true);
+
+    const buttonX =
+      width - this.SIGN_EDGE_INSET - this.forwardButton.displayWidth / 2;
+    const buttonY = groundTopY - this.forwardButton.displayHeight / 2;
+    this.forwardButton.setPosition(buttonX, buttonY);
+    this.forwardButtonX = buttonX;
+
+    this.forwardButton.setInteractive();
+    this.forwardButton.on('pointerdown', () => {
+      if (!this.forwardButton) return;
+
+      // Prevent double-firing if tapped rapidly
+      this.forwardButton.disableInteractive();
+
+      // If player is already at or past the sign, navigate immediately
+      if (
+        this.player &&
+        this.forwardButtonX !== undefined &&
+        this.player.x >= this.forwardButtonX
+      ) {
+        this.triggerForwardButtonTween();
+        return;
+      }
+      this.isWalkingToSign = true;
+    });
   }
 
   update() {
-    if (!this.player || !this.cursors) return;
+    if (!this.player) return;
 
     const { width, height } = this.cameras.main;
-    const bodyWidth = this.player.displayWidth - this.PLAYER_BODY_WIDTH_OFFSET;
+
+    // Walk player to signpost before navigating
+    if (this.isWalkingToSign && this.forwardButtonX !== undefined) {
+      const distanceToSign = this.forwardButtonX - this.player.x;
+
+      if (distanceToSign <= 8) {
+        // Player arrived - stop, idle, trigger
+        this.isWalkingToSign = false;
+        this.triggerForwardButtonTween();
+        return;
+      }
+
+      // Force walk right toward button
+      this.player.setVelocityX(this.PLAYER_SPEED);
+      this.player.setFlipX(false);
+      this.player.play('walk-anim', true);
+      return;
+    }
+
+    const inputState = this.inputController?.getState() ?? {
+      moveLeft: false,
+      moveRight: false,
+      jump: false,
+      climbUp: false,
+      climbDown: false,
+    };
+
+    const { moveLeft, moveRight } = inputState;
+
+    const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
     const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
     const rightEdgeTrigger = width + bodyWidth * this.NAVIGATION_TRIGGER_RATIO;
-
-    const moveLeft = this.cursors.left.isDown || this.wasd?.A.isDown;
-    const moveRight = this.cursors.right.isDown || this.wasd?.D.isDown;
-    const jump = this.cursors.up.isDown || this.wasd?.W.isDown;
 
     if (moveLeft) {
       this.player.setVelocityX(-this.PLAYER_SPEED);
@@ -136,8 +276,16 @@ export class WelcomeScene extends Phaser.Scene {
       }
     }
 
-    // Jump
-    if (jump && this.player.body && this.player.body.touching.down) {
+    // Jump - W and Up Arrow Only
+    const canJump = this.player.body?.touching.down ?? false;
+    const keyboardJump =
+      this.inputController?.['cursors']?.up.isDown === true ||
+      this.inputController?.['wasd']?.W.isDown === true;
+
+    // Jump: diagonal and upward swipes via InputController
+    const touchJump = inputState.jump;
+
+    if ((keyboardJump || touchJump) && canJump) {
       this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
     }
@@ -150,7 +298,8 @@ export class WelcomeScene extends Phaser.Scene {
 
     // Prevent falling below screen
     if (this.player.y > height + 100) {
-      this.player.y = height - 80;
+      const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
+      this.player.y = groundCenterY - this.player.displayHeight / 2;
       this.player.setVelocityY(0);
     }
   }
@@ -169,7 +318,7 @@ export class WelcomeScene extends Phaser.Scene {
 
     if (!this.player) return;
 
-    const bodyWidth = this.player.displayWidth - this.PLAYER_BODY_WIDTH_OFFSET;
+    const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
     const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
     const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
 
@@ -187,9 +336,15 @@ export class WelcomeScene extends Phaser.Scene {
       this.player.y = height - 80;
       this.player.setVelocityY(0);
     }
+
+    this.createForwardButton();
   }
 
   private navigateToMainPage() {
     if (this.onNavigate) this.onNavigate();
+  }
+
+  shutdown(): void {
+    this.inputController?.destroy();
   }
 }

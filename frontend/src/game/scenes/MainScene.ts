@@ -239,7 +239,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Arrow Signpost
-    this.load.image('back-button', '/assets/ui/arrow-left.png');
+    this.load.image('arrow-sign', '/assets/ui/arrow-left.png');
   }
 
   create() {
@@ -370,29 +370,41 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
-   * Fires left arrow sign press tween then navigate to Welcome Scene
+   * Shared signpost tween used by both back and forward buttons.
    *
-   * Called when player reaches the button or is already close enough.
-   * Player is stopped and idled between tween fires for a clean visual beat.
+   * Stops the player, plays idle, fires a scale pulse on the sign, then calls onComplete to trigger navigation
+   *
+   * Accepts the button and callback as parameters for reusability
+   *
+   * @param button - the signpost image
+   * @param onComplete - navigation callback fired after tween finishes
    */
-  private triggerBackButtonTween(): void {
-    if (!this.backButton) return;
-
-    // Stop player and return to idle
+  private triggerSignpostTween(
+    button: Phaser.GameObjects.Image,
+    onComplete: () => void
+  ): void {
     this.player?.setVelocityX(0);
     this.player?.play('idle-anim', true);
 
     this.tweens.add({
-      targets: this.backButton,
+      targets: button,
       scaleX: 1.6,
       scaleY: 1.6,
       duration: 100,
       ease: 'Sine.In',
       yoyo: true,
-      onComplete: () => {
-        this.navigateBack();
-      },
+      onComplete,
     });
+  }
+
+  /**
+   * Fires the signpost tween then navigates to WelcomeScene.
+   *
+   * Called when player reaches the back button or is already close
+   */
+  private triggerBackButtonTween(): void {
+    if (!this.backButton) return;
+    this.triggerSignpostTween(this.backButton, () => this.navigateBack());
   }
 
   /**
@@ -422,7 +434,7 @@ export class MainScene extends Phaser.Scene {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
 
-    this.backButton = this.add.image(0, 0, 'back-button');
+    this.backButton = this.add.image(0, 0, 'arrow-sign');
     this.backButton.setScale(2);
     this.backButton.setDepth(0.5);
 
