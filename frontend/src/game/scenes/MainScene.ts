@@ -460,7 +460,7 @@ export class MainScene extends Phaser.Scene {
         this.triggerBackButtonTween();
         return;
       }
-
+      this.handlePoolExit();
       this.isWalkingToSign = true;
     });
   }
