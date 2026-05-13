@@ -104,11 +104,13 @@ export class MainScene extends Phaser.Scene {
   private readonly LADDER_GRAVITY_REDUCED = -250;
 
   // Pool drawing
-  private readonly POOL_BOTTOM_RING_H = 40;
-  private readonly POOL_BOTTOM_RING_Y_OFFSET = 18; // how far below pool centre the bottom ring sits
+  private readonly POOL_BOTTOM_RING_H = 30;
+  private readonly POOL_BOTTOM_RING_Y_OFFSET = 26; // how far below pool centre the bottom ring sits
   private readonly POOL_TOP_RING_H = 36;
   private readonly POOL_TOP_RING_Y_OFFSET = 2;
   private readonly POOL_TOP_RING_Y_INNER = 12; // ellipse centre shift within top ring bounds
+  private readonly POOL_TOP_RING_FRONT_FACE_OFFSET = 6;
+  private readonly POOL_TOP_RING_FRONT_FACE_H = 24;
   private readonly POOL_WATER_Y_OFFSET = 8; // how far above pool centre the water sits
   private readonly POOL_WATER_Y_INNER = 10; // water ellipse centre shift within water bounds
   private readonly POOL_WATER_SHADOW_Y_INNER = 10.5;
@@ -1698,7 +1700,8 @@ export class MainScene extends Phaser.Scene {
     x: number,
     y: number
   ): void {
-    const w = POOL_WIDTH;
+    const w = POOL_WIDTH + 2;
+    const wOffset = 1;
 
     // Bottom ring
     const bottomRingY = y + this.POOL_BOTTOM_RING_Y_OFFSET + POOL_GROUND_EMBED;
@@ -1711,13 +1714,45 @@ export class MainScene extends Phaser.Scene {
       POOL_COLOUR_BOTTOM
     );
 
+    // Bottom ring base effect
+    const bottomBaseCentreY =
+      y + this.POOL_BOTTOM_RING_Y_OFFSET + this.POOL_TOP_RING_Y_INNER;
+
+    graphics.fillStyle(POOL_COLOUR_BOTTOM, 1);
+    graphics.fillEllipse(
+      x,
+      bottomBaseCentreY,
+      w + wOffset,
+      this.POOL_BOTTOM_RING_H + 6
+    );
+
     // Top ring
-    const topRingY = y - this.POOL_TOP_RING_Y_OFFSET;
+    const topRingCentreY =
+      y - this.POOL_TOP_RING_Y_OFFSET + this.POOL_TOP_RING_Y_INNER;
+
+    graphics.fillStyle(POOL_COLOUR_TOP, 1);
+    graphics.fillEllipse(x, topRingCentreY, w + wOffset, this.POOL_TOP_RING_H);
+
+    const frontFaceCentreY =
+      topRingCentreY + this.POOL_TOP_RING_FRONT_FACE_OFFSET;
+
+    // Top ring body
+    this.drawPill(
+      graphics,
+      x,
+      frontFaceCentreY,
+      w,
+      this.POOL_TOP_RING_FRONT_FACE_H,
+      POOL_COLOUR_TOP
+    );
+
+    // Top ring base
+    const topRingCentreYOffset = 6;
     graphics.fillStyle(POOL_COLOUR_TOP, 1);
     graphics.fillEllipse(
       x,
-      topRingY + this.POOL_TOP_RING_Y_INNER,
-      w - 2,
+      topRingCentreY + topRingCentreYOffset,
+      w + wOffset,
       this.POOL_TOP_RING_H
     );
   }
