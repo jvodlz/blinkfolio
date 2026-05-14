@@ -13,7 +13,16 @@ updates:
       - 'frontend'
     commit-message:
       prefix: 'chore'
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
+      frontend-react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
       frontend-types:
         patterns:
           - '@types/*'
