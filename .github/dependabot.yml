@@ -50,6 +50,23 @@ updates:
       - 'backend'
     commit-message:
       prefix: 'chore'
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    groups:
+      backend-fastify:
+        patterns:
+          - 'fastify'
+          - '@fastify/*'
+      backend-types:
+        patterns:
+          - '@types/*'
+      backend-eslint:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - '@typescript-eslint/*'
 
   # GitHub Actions workflow dependencies
   - package-ecosystem: 'github-actions'
