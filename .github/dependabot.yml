@@ -21,8 +21,13 @@ updates:
         patterns:
           - 'react'
           - 'react-dom'
+          - 'react-router-dom'
           - '@types/react'
           - '@types/react-dom'
+      frontend-vite:
+        patterns:
+          - 'vite'
+          - '@vitejs/*'
       frontend-types:
         patterns:
           - '@types/*'
@@ -32,11 +37,13 @@ updates:
           - '@eslint/*'
           - 'typescript-eslint'
           - '@typescript-eslint/*'
+          - 'globals'
       frontend-testing:
         patterns:
           - 'vitest'
           - '@vitest/*'
           - '@testing-library/*'
+          - 'jsdom'
 
   # Backend npm dependencies
   - package-ecosystem: 'npm'
