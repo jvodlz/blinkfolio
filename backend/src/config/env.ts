@@ -8,14 +8,14 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z
     .string()
     .min(1)
-    .transform((val) => val.split('z').map((s) => s.trim())),
+    .transform((val) => val.split(',').map((s) => s.trim())),
   REDIS_URL: z.url(),
   DATABASE_URL: z.url(),
 });
 
 export type Env = z.infer<typeof envSchema>;
 
-export function valudateEnv(): Env {
+export function validateEnv(): Env {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {

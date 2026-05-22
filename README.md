@@ -11,20 +11,23 @@ Where portfolio meets play
 ## Tech Stack
 
 ### Frontend
-- React 19 + TypeScript
-- Vite (build tool)
+- React 19 + TypeScript 5
+- Vite 7 (build tool)
 - Phaser.js 3.90+ (game engine)
-- React Router (navigation)
+- React Router 7 (navigation)
 
-### Backend *(Phase 2)*
-- Node.js + Express + TypeScript
-- PostgreSQL (Supabase)
-- Redis (Render)
+### Backend
+- Fastify v5 + TypeScript 6
+- PostgreSQL via Supabase (game event counters)
+- Redis via Render (brick cooldown state + rate limiting)
+- Zod v4 (input validation)
+- Pino (structured logging)
 
 ### DevOps
 - GitHub Actions (CI/CD)
 - Vercel (frontend hosting)
 - Render (backend hosting)
+- UptimeRobot (keep-alive monitor)
 
 ## Getting Started
 
@@ -43,6 +46,21 @@ npm run dev
 
 Open http://localhost:5173
 
+```bash
+# Install backend dependencies
+cd backend
+npm install
+
+# Start backend development server
+npm run dev
+```
+
+API runs on http://localhost:3001
+
+## Environment Variables
+
+See `backend/.env.example` for required variables.
+
 ## Assets
 
 All game assets are CC0 licensed (public domain).
@@ -53,5 +71,6 @@ All game assets are CC0 licensed (public domain).
 
 ## Development Approach
 
-- **TDD (Test-Driven Development):** Tests written before implementation
-- **Security-first:** Best practices for authentication, input validation, and data protection
+- **TDD (Test-Driven Development):** Tests written before implementation for React components and pure logic functions
+- **Security-first:** Helmet, CORS allowlist, Redis-backed rate limiting, Zod input validation, structured logging
+
