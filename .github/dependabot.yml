@@ -65,6 +65,7 @@ updates:
         patterns:
           - 'fastify'
           - '@fastify/*'
+          - 'fastify-plugin'
       backend-types:
         patterns:
           - '@types/*'
@@ -74,6 +75,14 @@ updates:
           - '@eslint/*'
           - 'typescript-eslint'
           - '@typescript-eslint/*'
+      backend-testing:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      backend-runtime:
+        patterns:
+          - 'ioredis'
+          - 'zod'
 
   # GitHub Actions workflow dependencies
   - package-ecosystem: 'github-actions'
