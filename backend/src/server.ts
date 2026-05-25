@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 
 import configPlugin from './plugins/config.ts';
 import redisPlugin from './plugins/redis.ts';
+import { cooldownRoutes } from './routes/cooldown.ts';
 
 export async function buildApp() {
   const app = Fastify({
@@ -34,6 +35,12 @@ export async function buildApp() {
   // -- Redis
   await app.register(redisPlugin);
 
+  // -- Routes
+  await app.register(cooldownRoutes);
+  app.get('/health', async (_request, _reply) => {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
   // -- Global error handler
   app.setErrorHandler((error: FastifyError, _request, reply) => {
     app.log.error(error);
@@ -41,11 +48,6 @@ export async function buildApp() {
     const message =
       statusCode === 429 ? error.message : 'Internal server error';
     reply.status(statusCode).send({ error: message });
-  });
-
-  // -- Routes
-  app.get('/health', async (_request, _reply) => {
-    return { status: 'ok', timestamp: new Date().toISOString() };
   });
 
   return app;
