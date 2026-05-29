@@ -6,7 +6,11 @@ import rateLimit from '@fastify/rate-limit';
 
 import configPlugin from './plugins/config.ts';
 import redisPlugin from './plugins/redis.ts';
+import databasePlugin from './plugins/database.ts';
+
 import { cooldownRoutes } from './routes/cooldown.ts';
+import { statsRoutes } from './routes/stats.ts';
+import { eventsRoutes } from './routes/events.ts';
 
 export async function buildApp() {
   const app = Fastify({
@@ -35,10 +39,20 @@ export async function buildApp() {
   // -- Redis
   await app.register(redisPlugin);
 
+  // -- Database
+  await app.register(databasePlugin);
+
   // -- Routes
   await app.register(cooldownRoutes);
+  await app.register(statsRoutes);
+  await app.register(eventsRoutes);
   app.get('/health', async (_request, _reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
+  // -- Not found handler
+  app.setNotFoundHandler((_request, reply) => {
+    reply.status(404).send({ error: 'Not found' });
   });
 
   // -- Global error handler
