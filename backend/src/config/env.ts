@@ -9,6 +9,7 @@ const envSchema = z.object({
     .string()
     .min(1)
     .transform((val) => val.split(',').map((s) => s.trim())),
+  HOST: z.string().default('::'),
   REDIS_URL: z.url(),
   DATABASE_URL: z.url(),
 });

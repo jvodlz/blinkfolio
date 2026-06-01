@@ -71,7 +71,7 @@ async function start() {
   const app = await buildApp();
 
   try {
-    await app.listen({ port: app.config.PORT, host: '0.0.0.0' });
+    await app.listen({ port: app.config.PORT, host: app.config.HOST });
   } catch (err) {
     app.log.fatal(err);
     process.exit(1);
