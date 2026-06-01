@@ -34,7 +34,7 @@
   "devDependencies": {
     "@types/node": "^24.12.4",
     "@types/pg": "^8.20.0",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.8",
     "dotenv": "^17.4.2",
     "eslint": "^10.4.0",
     "node-pg-migrate": "^8.0.4",
