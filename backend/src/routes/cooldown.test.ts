@@ -20,7 +20,7 @@ describe('GET /cooldown/:brickId', () => {
     };
   });
 
-  it('returns active: false when no cooldown exists', async () => {
+  it('returns cooling: false when no cooldown exists', async () => {
     (redisMock.get as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     const app = buildTestApp(redisMock);
     const response = await app.inject({
@@ -28,10 +28,10 @@ describe('GET /cooldown/:brickId', () => {
       url: '/cooldown/brick-1',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ brickId: 'brick-1', active: false });
+    expect(response.json()).toEqual({ brickId: 'brick-1', cooling: false });
   });
 
-  it('returns active: true when cooldown exists', async () => {
+  it('returns cooling: true when cooldown exists', async () => {
     (redisMock.get as ReturnType<typeof vi.fn>).mockResolvedValue('1');
     const app = buildTestApp(redisMock);
     const response = await app.inject({
@@ -39,7 +39,7 @@ describe('GET /cooldown/:brickId', () => {
       url: '/cooldown/brick-1',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ brickId: 'brick-1', active: true });
+    expect(response.json()).toEqual({ brickId: 'brick-1', cooling: true });
   });
 
   it('returns 400 for an invalid brickId', async () => {
@@ -61,7 +61,7 @@ describe('POST /cooldown/:brickId', () => {
     };
   });
 
-  it('sets a cooldown and returns success', async () => {
+  it('sets a cooldown and returns cooling: true', async () => {
     (redisMock.set as ReturnType<typeof vi.fn>).mockResolvedValue('OK');
     const app = buildTestApp(redisMock);
     const response = await app.inject({
@@ -69,7 +69,7 @@ describe('POST /cooldown/:brickId', () => {
       url: '/cooldown/brick-1',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ brickId: 'brick-1', active: true });
+    expect(response.json()).toEqual({ brickId: 'brick-1', cooling: true });
   });
 
   it('returns 400 for an invalid brickId', async () => {

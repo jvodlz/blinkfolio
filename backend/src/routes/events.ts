@@ -18,7 +18,7 @@ async function eventsRoutes(app: FastifyInstance): Promise<void> {
     const result = paramsSchema.safeParse(request.params);
 
     if (!result.success) {
-      return reply.status(400).send({ error: 'Invalid event type' });
+      return reply.status(400).send({ error: 'Bad request' });
     }
 
     const { eventType } = result.data;
