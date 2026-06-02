@@ -46,8 +46,39 @@ export async function buildApp() {
   await app.register(cooldownRoutes);
   await app.register(statsRoutes);
   await app.register(eventsRoutes);
-  app.get('/health', async (_request, _reply) => {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+  app.get('/health', async (_request, reply) => {
+    const timestamp = new Date().toISOString();
+    const services: Record<string, 'ok' | 'degraded'> = {};
+
+    try {
+      await app.db`SELECT 1`;
+      services['database'] = 'ok';
+    } catch {
+      services['database'] = 'degraded';
+    }
+
+    try {
+      const pong = await app.redis.ping();
+      services['redis'] = pong === 'PONG' ? 'ok' : 'degraded';
+    } catch {
+      services['redis'] = 'degraded';
+    }
+
+    const allHealthy = Object.values(services).every((s) => s === 'ok');
+
+    if (!allHealthy) {
+      return reply.status(503).send({
+        status: 'degraded',
+        timestamp,
+        services,
+      });
+    }
+
+    return reply.status(200).send({
+      status: 'ok',
+      timestamp,
+      services,
+    });
   });
 
   // -- Not found handler
