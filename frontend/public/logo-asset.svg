@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg { fill: #111e1b; }
+    .b  { fill: #e3bd1f; }
+    .f  { fill: #e3bd1f; }
+  </style>
+  <rect class="bg" width="32" height="32" rx="2" />
+  <text
+    class="b"
+    x="12"
+    y="22"
+    text-anchor="middle"
+    font-family="system-ui, sans-serif"
+    font-weight="700"
+    font-size="16"
+  >B</text>
+  <text
+    class="f"
+    x="21"
+    y="22"
+    text-anchor="middle"
+    font-family="system-ui, sans-serif"
+    font-weight="700"
+    font-size="14"
+  >F</text>
+</svg>
