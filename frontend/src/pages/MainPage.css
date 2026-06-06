@@ -49,11 +49,9 @@
   display: block;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
   z-index: 10;
   padding-bottom: 140px;
-  pointer-events: auto;
+  pointer-events: none;
 
   scrollbar-width: thin;
   scrollbar-color: #e3bd1f transparent;
@@ -88,6 +86,10 @@
   min-height: calc(100vh - 200px);
   padding: 4em 2rem 0 2rem;
   box-sizing: border-box;
+
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* ============================================================
