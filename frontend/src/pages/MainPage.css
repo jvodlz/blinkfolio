@@ -49,9 +49,11 @@
   display: block;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   z-index: 10;
   padding-bottom: 140px;
-  pointer-events: none;
+  pointer-events: auto;
 
   scrollbar-width: thin;
   scrollbar-color: #e3bd1f transparent;
@@ -161,15 +163,5 @@
   .content-section {
     flex: 0 0 auto;
     width: 100%;
-  }
-}
-
-/* ============================================================
-   Touch input
-   ============================================================ */
-
-@media (pointer: coarse) {
-  .game-layer {
-    pointer-events: auto;
   }
 }
