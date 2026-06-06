@@ -1,21 +1,82 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Game } from '../game/Game';
 import { MainScene } from '../game/scenes/MainScene';
 import './MainPage.css';
 
+/**
+ * Returns true if the touch landed on or inside a content card.
+ */
+function isTouchOnCard(e: TouchEvent): boolean {
+  return e
+    .composedPath()
+    .some(
+      (el) => el instanceof Element && el.classList.contains('content-section')
+    );
+}
+
+/**
+ * Forwards a touch event to the Phaser canvas.
+ */
+function forwardTouchToCanvas(e: TouchEvent, canvas: HTMLCanvasElement): void {
+  const forwarded = new TouchEvent(e.type, {
+    bubbles: e.bubbles,
+    cancelable: e.cancelable,
+    touches: Array.from(e.touches),
+    targetTouches: Array.from(e.targetTouches),
+    changedTouches: Array.from(e.changedTouches),
+  });
+  canvas.dispatchEvent(forwarded);
+}
+
 export function MainPage() {
   const navigate = useNavigate();
+  const contentAreaRef = useRef<HTMLDivElement>(null);
 
   const handleNavigateBack = useCallback(() => {
     navigate('/');
   }, [navigate]);
 
+  /**
+   * Touch forwarding — bridges iOS scroll and Phaser swipe input.
+   */
+  useEffect(() => {
+    const contentArea = contentAreaRef.current;
+    if (!contentArea) return;
+
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+
+    const handleTouchStart = (e: TouchEvent): void => {
+      if (!isTouchOnCard(e)) {
+        forwardTouchToCanvas(e, canvas as HTMLCanvasElement);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent): void => {
+      if (!isTouchOnCard(e)) {
+        forwardTouchToCanvas(e, canvas as HTMLCanvasElement);
+      }
+    };
+
+    contentArea.addEventListener('touchstart', handleTouchStart, {
+      passive: true,
+    });
+    contentArea.addEventListener('touchend', handleTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      contentArea.removeEventListener('touchstart', handleTouchStart);
+      contentArea.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   // Rendered via Portal so it escapes main-page's overflow:hidden
   // Only the content-area div is portalled — no wrapper
   const contentArea = (
-    <div className="content-area">
+    <div className="content-area" ref={contentAreaRef}>
       <div className="content-row">
         <section className="content-section" data-testid="about-section">
           <h2>About Me</h2>
