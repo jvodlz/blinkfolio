@@ -32,8 +32,9 @@
 
 /* ============================================================
    Content area (SCROLL CONTAINER)
-   Full viewport, pointer-events:none so Phaser gets input
-   underneath. Scroll happens here.
+   pointer-events: auto required for iOS Safari to scroll.
+   Touch events that miss the cards are forwarded to the canvas
+   by the forwardTouchToCanvas handler in MainPage.tsx.
    ============================================================ */
 .content-area {
   font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
@@ -44,14 +45,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100vh; /* explicit height gives scroll container a concrete boundary */
+  height: 100vh;
 
   display: block;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   z-index: 10;
   padding-bottom: 140px;
-  pointer-events: none;
+  pointer-events: auto;
 
   scrollbar-width: thin;
   scrollbar-color: #e3bd1f transparent;
