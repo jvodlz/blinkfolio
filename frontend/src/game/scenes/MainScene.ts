@@ -143,7 +143,6 @@ export class MainScene extends Phaser.Scene {
 
   // Content platforms
   private platformGroup?: Phaser.Physics.Arcade.StaticGroup;
-  private platformDebugGraphics?: Phaser.GameObjects.Graphics;
 
   // Brick platforms
   private brickGroup?: Phaser.Physics.Arcade.StaticGroup;
@@ -734,13 +733,6 @@ export class MainScene extends Phaser.Scene {
     // Reuse same group object
     this.platformGroup?.clear(true, true);
 
-    // Clean up debug graphics
-    if (this.platformDebugGraphics) {
-      this.platformDebugGraphics.clear();
-    } else {
-      this.platformDebugGraphics = this.add.graphics();
-    }
-
     // Read DOM positions of content sections
     const sectionElements = Array.from(
       document.querySelectorAll('[data-testid$="-section"]')
@@ -771,15 +763,6 @@ export class MainScene extends Phaser.Scene {
       body.checkCollision.right = false;
 
       this.platformGroup!.add(platform);
-
-      // Debug visualisation - draws a line to see the platform
-      this.platformDebugGraphics!.lineStyle(2, 0x00ff00, 1);
-      this.platformDebugGraphics!.strokeRect(
-        rect.x - rect.width / 2,
-        rect.y,
-        rect.width,
-        8
-      );
     });
   }
 
@@ -1874,7 +1857,6 @@ export class MainScene extends Phaser.Scene {
       // Scrolled away from top -> clear platforms. Drop player to ground
       this.isScrolled = true;
       this.platformGroup?.clear(true, true);
-      this.platformDebugGraphics?.clear();
       this.brickGroup?.clear(true, true); // clear bricks on scroll away
       this.clearLadder();
       if (window.innerWidth >= POOL_X_BREAKPOINT_MEDIUM) {
