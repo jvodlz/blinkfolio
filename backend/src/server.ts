@@ -1,3 +1,4 @@
+// CI path-filter test: backend-only change, no behavioural effect
 import Fastify from 'fastify';
 import type { FastifyError } from 'fastify';
 import helmet from '@fastify/helmet';
