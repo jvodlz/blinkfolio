@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   lint:
-    name: Lint
+    name: Backend Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
         run: npm run lint
 
   format:
-    name: Format Check
+    name: Backend Format Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -62,7 +62,7 @@ jobs:
         run: npm run format:check
 
   type-check:
-    name: Type Check
+    name: Backend Type Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -82,7 +82,7 @@ jobs:
         run: npm run type-check
 
   audit:
-    name: Security Audit
+    name: Backend Security Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -102,7 +102,7 @@ jobs:
         run: npm audit --audit-level=high --omit=dev
 
   test:
-    name: Test
+    name: Backend Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
