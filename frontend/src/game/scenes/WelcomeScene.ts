@@ -1,21 +1,22 @@
 import Phaser from 'phaser';
-import { MOBILE_MAX_WIDTH } from '../constants';
+import {
+  MOBILE_MAX_WIDTH,
+  GROUND_HEIGHT,
+  GROUND_OFFSET_FROM_BOTTOM,
+  PLAYER_SCALE,
+  PLAYER_SPEED,
+  PLAYER_JUMP_VELOCITY,
+  PLAYER_BOUNDARY_RATIO,
+  PLAYER_BODY_WIDTH,
+  PLAYER_BODY_HEIGHT,
+  PLAYER_BODY_OFFSET_X,
+  PLAYER_BODY_OFFSET_Y,
+} from '../constants';
 import { InputController } from '../input/InputController';
 
 export class WelcomeScene extends Phaser.Scene {
-  private readonly GROUND_HEIGHT = 40;
-  private readonly GROUND_OFFSET_FROM_BOTTOM = 20;
-
   // Player
-  private readonly PLAYER_SCALE = 2.5;
-  private readonly PLAYER_SPEED = 200;
-  private readonly PLAYER_JUMP_VELOCITY = -400;
-  private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
   private readonly NAVIGATION_TRIGGER_RATIO = 0.2; // fraction of body width past right edge to trigger navigation
-  private readonly PLAYER_BODY_WIDTH = 10;
-  private readonly PLAYER_BODY_HEIGHT = 15;
-  private readonly PLAYER_BODY_OFFSET_X = 11;
-  private readonly PLAYER_BODY_OFFSET_Y = 17;
 
   // Signpost
   private readonly SIGN_EDGE_INSET = 40;
@@ -57,14 +58,14 @@ export class WelcomeScene extends Phaser.Scene {
   create() {
     const { width, height } = this.cameras.main;
     const startX = Phaser.Math.Between(width * 0.25, width * 0.75);
-    const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
+    const groundCenterY = height - GROUND_OFFSET_FROM_BOTTOM;
 
     // Ground
     this.ground = this.add.rectangle(
       width / 2,
       groundCenterY,
       width,
-      this.GROUND_HEIGHT,
+      GROUND_HEIGHT,
       0xe95526,
       0.8
     );
@@ -72,13 +73,13 @@ export class WelcomeScene extends Phaser.Scene {
 
     // Player
     this.player = this.physics.add.sprite(startX, -100, 'idle');
-    this.player.setScale(this.PLAYER_SCALE);
+    this.player.setScale(PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
     this.player.setDepth(1);
 
     // Fit physics body to player
-    this.player.setBodySize(this.PLAYER_BODY_WIDTH, this.PLAYER_BODY_HEIGHT);
-    this.player.setOffset(this.PLAYER_BODY_OFFSET_X, this.PLAYER_BODY_OFFSET_Y);
+    this.player.setBodySize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
+    this.player.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
 
     this.physics.add.collider(this.player, this.ground);
 
@@ -186,8 +187,8 @@ export class WelcomeScene extends Phaser.Scene {
     if (window.innerWidth > MOBILE_MAX_WIDTH) return;
 
     const { width, height } = this.cameras.main;
-    const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
-    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+    const groundCenterY = height - GROUND_OFFSET_FROM_BOTTOM;
+    const groundTopY = groundCenterY - GROUND_HEIGHT / 2;
 
     this.forwardButton = this.add.image(0, 0, 'arrow-sign');
     this.forwardButton.setScale(2);
@@ -237,7 +238,7 @@ export class WelcomeScene extends Phaser.Scene {
       }
 
       // Force walk right toward button
-      this.player.setVelocityX(this.PLAYER_SPEED);
+      this.player.setVelocityX(PLAYER_SPEED);
       this.player.setFlipX(false);
       this.player.play('walk-anim', true);
       return;
@@ -254,15 +255,15 @@ export class WelcomeScene extends Phaser.Scene {
     const { moveLeft, moveRight } = inputState;
 
     const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
-    const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
+    const leftBoundary = bodyWidth * PLAYER_BOUNDARY_RATIO;
     const rightEdgeTrigger = width + bodyWidth * this.NAVIGATION_TRIGGER_RATIO;
 
     if (moveLeft) {
-      this.player.setVelocityX(-this.PLAYER_SPEED);
+      this.player.setVelocityX(-PLAYER_SPEED);
       this.player.play('walk-anim', true);
       this.player.setFlipX(true);
     } else if (moveRight) {
-      this.player.setVelocityX(this.PLAYER_SPEED);
+      this.player.setVelocityX(PLAYER_SPEED);
       this.player.play('walk-anim', true);
       this.player.setFlipX(false);
 
@@ -286,7 +287,7 @@ export class WelcomeScene extends Phaser.Scene {
     const touchJump = inputState.jump;
 
     if ((keyboardJump || touchJump) && canJump) {
-      this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
+      this.player.setVelocityY(PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
     }
 
@@ -298,7 +299,7 @@ export class WelcomeScene extends Phaser.Scene {
 
     // Prevent falling below screen
     if (this.player.y > height + 100) {
-      const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
+      const groundCenterY = height - GROUND_OFFSET_FROM_BOTTOM;
       this.player.y = groundCenterY - this.player.displayHeight / 2;
       this.player.setVelocityY(0);
     }
@@ -306,12 +307,12 @@ export class WelcomeScene extends Phaser.Scene {
 
   private handleResize(gameSize: Phaser.Structs.Size) {
     const { width, height } = gameSize;
-    const groundCenterY = height - this.GROUND_OFFSET_FROM_BOTTOM;
-    const groundHalf = this.GROUND_HEIGHT / 2;
+    const groundCenterY = height - GROUND_OFFSET_FROM_BOTTOM;
+    const groundHalf = GROUND_HEIGHT / 2;
 
     if (this.ground) {
       this.ground.setPosition(width / 2, groundCenterY);
-      this.ground.setSize(width, this.GROUND_HEIGHT);
+      this.ground.setSize(width, GROUND_HEIGHT);
       const body = this.ground.body as Phaser.Physics.Arcade.StaticBody;
       if (body) body.updateFromGameObject();
     }
@@ -319,8 +320,8 @@ export class WelcomeScene extends Phaser.Scene {
     if (!this.player) return;
 
     const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
-    const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
-    const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
+    const leftBoundary = bodyWidth * PLAYER_BOUNDARY_RATIO;
+    const rightBoundary = width - bodyWidth * PLAYER_BOUNDARY_RATIO;
 
     if (this.player.x < leftBoundary) this.player.x = leftBoundary;
     if (this.player.x > rightBoundary) this.player.x = rightBoundary;
