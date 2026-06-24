@@ -102,14 +102,4 @@ describe('MainScene', () => {
       expect.objectContaining({ frameWidth: 16, frameHeight: 16 })
     );
   });
-
-  it('should have player movement constants defined', () => {
-    expect(scene['PLAYER_SPEED']).toBeDefined();
-    expect(scene['PLAYER_JUMP_VELOCITY']).toBeDefined();
-  });
-
-  it('should have ground constants defined', () => {
-    expect(scene['GROUND_HEIGHT']).toBeDefined();
-    expect(scene['GROUND_OFFSET_FROM_BOTTOM']).toBeDefined();
-  });
 });

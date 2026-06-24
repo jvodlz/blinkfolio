@@ -1,5 +1,17 @@
 import Phaser from 'phaser';
-import { MOBILE_MAX_WIDTH } from '../constants';
+import {
+  MOBILE_MAX_WIDTH,
+  GROUND_HEIGHT,
+  GROUND_OFFSET_FROM_BOTTOM,
+  PLAYER_SCALE,
+  PLAYER_SPEED,
+  PLAYER_JUMP_VELOCITY,
+  PLAYER_BOUNDARY_RATIO,
+  PLAYER_BODY_WIDTH,
+  PLAYER_BODY_HEIGHT,
+  PLAYER_BODY_OFFSET_X,
+  PLAYER_BODY_OFFSET_Y,
+} from '../constants';
 import {
   getPlatformRectsFromElements,
   CARD_STACK_BELOW_WIDTH,
@@ -60,19 +72,7 @@ const BrickLayout = {
 type BrickLayout = (typeof BrickLayout)[keyof typeof BrickLayout];
 
 export class MainScene extends Phaser.Scene {
-  private readonly GROUND_HEIGHT = 40;
-  private readonly GROUND_OFFSET_FROM_BOTTOM = 20;
-
   // Player
-  private readonly PLAYER_SCALE = 2.5;
-  private readonly PLAYER_SPEED = 200;
-  private readonly PLAYER_JUMP_VELOCITY = -400;
-  private readonly PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
-
-  private readonly PLAYER_BODY_WIDTH = 10;
-  private readonly PLAYER_BODY_HEIGHT = 15;
-  private readonly PLAYER_BODY_OFFSET_X = 11;
-  private readonly PLAYER_BODY_OFFSET_Y = 17;
   private readonly FAINT_FLASH_COUNT = 5;
   private readonly FAINT_FLASH_DURATION = 2500;
 
@@ -252,7 +252,7 @@ export class MainScene extends Phaser.Scene {
       width / 2,
       groundCenterY,
       width,
-      this.GROUND_HEIGHT,
+      GROUND_HEIGHT,
       0xe95526,
       0.8
     );
@@ -261,12 +261,12 @@ export class MainScene extends Phaser.Scene {
     const startX = Phaser.Math.Between(width * 0.25, width * 0.75);
     this.player = this.physics.add.sprite(startX, -100, 'idle');
     this.player.setDepth(1);
-    this.player.setScale(this.PLAYER_SCALE);
+    this.player.setScale(PLAYER_SCALE);
     this.player.setCollideWorldBounds(false);
 
     // Shrink physics body to match visible player
-    this.player.setBodySize(this.PLAYER_BODY_WIDTH, this.PLAYER_BODY_HEIGHT);
-    this.player.setOffset(this.PLAYER_BODY_OFFSET_X, this.PLAYER_BODY_OFFSET_Y);
+    this.player.setBodySize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
+    this.player.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
 
     // Collision with ground
     this.physics.add.collider(this.player, this.ground);
@@ -430,7 +430,7 @@ export class MainScene extends Phaser.Scene {
 
     const { height } = this.cameras.main;
     const groundCenterY = this.getGroundCenterY(height);
-    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+    const groundTopY = groundCenterY - GROUND_HEIGHT / 2;
 
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
@@ -489,7 +489,7 @@ export class MainScene extends Phaser.Scene {
       }
 
       // Force walk left toward button
-      this.player.setVelocityX(-this.PLAYER_SPEED);
+      this.player.setVelocityX(-PLAYER_SPEED);
       this.player.setFlipX(true);
       this.player.play('walk-anim', true);
       return;
@@ -542,10 +542,10 @@ export class MainScene extends Phaser.Scene {
 
       // Horizontal movement allowed while climbing
       if (moveLeft) {
-        this.player.setVelocityX(-this.PLAYER_SPEED);
+        this.player.setVelocityX(-PLAYER_SPEED);
         this.player.setFlipX(true);
       } else if (moveRight) {
-        this.player.setVelocityX(this.PLAYER_SPEED);
+        this.player.setVelocityX(PLAYER_SPEED);
         this.player.setFlipX(false);
       } else {
         this.player.setVelocityX(0);
@@ -601,13 +601,13 @@ export class MainScene extends Phaser.Scene {
 
       // Horizontal movement in pool
       if (moveLeft) {
-        this.player.setVelocityX(-this.PLAYER_SPEED * 0.4);
+        this.player.setVelocityX(-PLAYER_SPEED * 0.4);
         this.player.setFlipX(true);
         this.player.play('walk-anim', true);
         this.triggerWaterRipple();
         this.triggerDuckBob();
       } else if (moveRight) {
-        this.player.setVelocityX(this.PLAYER_SPEED * 0.4);
+        this.player.setVelocityX(PLAYER_SPEED * 0.4);
         this.player.setFlipX(false);
         this.player.play('walk-anim', true);
         this.triggerWaterRipple();
@@ -620,7 +620,7 @@ export class MainScene extends Phaser.Scene {
       // Jump to exit pool
       const jump = inputState.jump;
       if (jump) {
-        this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
+        this.player.setVelocityY(PLAYER_JUMP_VELOCITY);
         this.player.play('jump-anim', true);
         this.handlePoolExit();
       }
@@ -648,11 +648,11 @@ export class MainScene extends Phaser.Scene {
 
     // Horizontal movement
     if (moveLeft) {
-      this.player.setVelocityX(-this.PLAYER_SPEED);
+      this.player.setVelocityX(-PLAYER_SPEED);
       this.player.play('walk-anim', true);
       this.player.setFlipX(true);
     } else if (moveRight) {
-      this.player.setVelocityX(this.PLAYER_SPEED);
+      this.player.setVelocityX(PLAYER_SPEED);
       this.player.play('walk-anim', true);
       this.player.setFlipX(false);
     } else {
@@ -667,14 +667,14 @@ export class MainScene extends Phaser.Scene {
     // Jump
     const jump = inputState.jump;
     if (jump && this.player.body && this.player.body.touching.down) {
-      this.player.setVelocityY(this.PLAYER_JUMP_VELOCITY);
+      this.player.setVelocityY(PLAYER_JUMP_VELOCITY);
       this.player.play('jump-anim', true);
     }
 
     // Keep player in horizontal bounds
     const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
-    const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
-    const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
+    const leftBoundary = bodyWidth * PLAYER_BOUNDARY_RATIO;
+    const rightBoundary = width - bodyWidth * PLAYER_BOUNDARY_RATIO;
 
     if (this.player.x < leftBoundary) {
       this.player.x = leftBoundary;
@@ -839,7 +839,7 @@ export class MainScene extends Phaser.Scene {
     // Render Lower row (when layout is not None)
     // Anchored to ground platform
     const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
-    const groundTop = groundCenterY - this.GROUND_HEIGHT / 2;
+    const groundTop = groundCenterY - GROUND_HEIGHT / 2;
     const belowRowY = groundTop - this.BRICK_ABOVE_GROUND_OFFSET;
     this.renderBrickRow(
       this.brickLayoutConfig.bottomRow,
@@ -892,7 +892,7 @@ export class MainScene extends Phaser.Scene {
     }));
 
     const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
-    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+    const groundTopY = groundCenterY - GROUND_HEIGHT / 2;
 
     const layout = resolveLadderLayout(
       this.ladderDecision,
@@ -1266,7 +1266,7 @@ export class MainScene extends Phaser.Scene {
     // Update ground
     if (this.ground) {
       this.ground.setPosition(width / 2, groundCenterY);
-      this.ground.setSize(width, this.GROUND_HEIGHT);
+      this.ground.setSize(width, GROUND_HEIGHT);
 
       const body = this.ground.body as Phaser.Physics.Arcade.StaticBody;
       if (body) {
@@ -1277,8 +1277,8 @@ export class MainScene extends Phaser.Scene {
     // Keep player in bounds
     if (this.player) {
       const bodyWidth = (this.player.body as Phaser.Physics.Arcade.Body).width;
-      const leftBoundary = bodyWidth * this.PLAYER_BOUNDARY_RATIO;
-      const rightBoundary = width - bodyWidth * this.PLAYER_BOUNDARY_RATIO;
+      const leftBoundary = bodyWidth * PLAYER_BOUNDARY_RATIO;
+      const rightBoundary = width - bodyWidth * PLAYER_BOUNDARY_RATIO;
 
       if (this.player.x < leftBoundary) {
         this.player.x = leftBoundary;
@@ -1288,7 +1288,7 @@ export class MainScene extends Phaser.Scene {
         this.player.x = rightBoundary;
       }
 
-      const groundTop = groundCenterY - this.GROUND_HEIGHT / 2;
+      const groundTop = groundCenterY - GROUND_HEIGHT / 2;
       const playerBottom = this.player.y + this.player.displayHeight / 2;
 
       if (playerBottom > groundTop) {
@@ -1306,7 +1306,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private getGroundCenterY(height: number): number {
-    return height - this.GROUND_OFFSET_FROM_BOTTOM;
+    return height - GROUND_OFFSET_FROM_BOTTOM;
   }
 
   /**
@@ -1393,7 +1393,7 @@ export class MainScene extends Phaser.Scene {
     }));
 
     const groundCenterY = this.getGroundCenterY(this.cameras.main.height);
-    const groundTopY = groundCenterY - this.GROUND_HEIGHT / 2;
+    const groundTopY = groundCenterY - GROUND_HEIGHT / 2;
 
     const viewportWidth = window.innerWidth;
     if (viewportWidth < POOL_X_BREAKPOINT_MEDIUM) {
