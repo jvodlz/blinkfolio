@@ -39,7 +39,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^10.5.0",
     "node-pg-migrate": "^8.0.4",
-    "pg": "^8.21.0",
+    "pg": "^8.22.0",
     "prettier": "^3.8.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1",
