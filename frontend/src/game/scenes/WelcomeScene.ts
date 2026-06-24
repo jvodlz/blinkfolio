@@ -3,16 +3,12 @@ import {
   MOBILE_MAX_WIDTH,
   GROUND_HEIGHT,
   GROUND_OFFSET_FROM_BOTTOM,
-  PLAYER_SCALE,
   PLAYER_SPEED,
   PLAYER_JUMP_VELOCITY,
   PLAYER_BOUNDARY_RATIO,
-  PLAYER_BODY_WIDTH,
-  PLAYER_BODY_HEIGHT,
-  PLAYER_BODY_OFFSET_X,
-  PLAYER_BODY_OFFSET_Y,
 } from '../constants';
 import { InputController } from '../input/InputController';
+import { createPlayer } from '../utils/playerSetup';
 
 export class WelcomeScene extends Phaser.Scene {
   // Player
@@ -72,14 +68,7 @@ export class WelcomeScene extends Phaser.Scene {
     this.physics.add.existing(this.ground, true);
 
     // Player
-    this.player = this.physics.add.sprite(startX, -100, 'idle');
-    this.player.setScale(PLAYER_SCALE);
-    this.player.setCollideWorldBounds(false);
-    this.player.setDepth(1);
-
-    // Fit physics body to player
-    this.player.setBodySize(PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
-    this.player.setOffset(PLAYER_BODY_OFFSET_X, PLAYER_BODY_OFFSET_Y);
+    this.player = createPlayer(this, startX, -100);
 
     this.physics.add.collider(this.player, this.ground);
 
