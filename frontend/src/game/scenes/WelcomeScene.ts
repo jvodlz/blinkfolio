@@ -8,6 +8,7 @@ import {
   PLAYER_BOUNDARY_RATIO,
 } from '../constants';
 import { InputController } from '../input/InputController';
+import { registerPlayerAnimations } from '../utils/animationSetup';
 import { createPlayer } from '../utils/playerSetup';
 
 export class WelcomeScene extends Phaser.Scene {
@@ -72,34 +73,13 @@ export class WelcomeScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, this.ground);
 
-    this.createAnimations();
+    registerPlayerAnimations(this);
     this.player.play('idle-anim');
 
     this.setupControls();
     this.createForwardButton();
 
     this.scale.on('resize', this.handleResize, this);
-  }
-
-  private createAnimations(): void {
-    this.anims.create({
-      key: 'idle-anim',
-      frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-    this.anims.create({
-      key: 'walk-anim',
-      frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-    this.anims.create({
-      key: 'jump-anim',
-      frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
   }
 
   /**
