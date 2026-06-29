@@ -7,6 +7,7 @@ import {
   PLAYER_JUMP_VELOCITY,
   PLAYER_BOUNDARY_RATIO,
 } from '../constants';
+import { registerPlayerAnimations } from '../utils/animationSetup';
 import {
   getPlatformRectsFromElements,
   CARD_STACK_BELOW_WIDTH,
@@ -304,6 +305,7 @@ export class MainScene extends Phaser.Scene {
       this.createKiddiePool();
     });
 
+    registerPlayerAnimations(this);
     this.createAnimations();
     this.player.play('idle-anim');
 
@@ -318,30 +320,6 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // Idle
-    this.anims.create({
-      key: 'idle-anim',
-      frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    // Walk
-    this.anims.create({
-      key: 'walk-anim',
-      frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    // Jump
-    this.anims.create({
-      key: 'jump-anim',
-      frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
     // Faint
     this.anims.create({
       key: 'faint-anim',
