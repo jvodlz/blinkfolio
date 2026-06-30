@@ -59,6 +59,7 @@ import {
 } from '../utils/kiddiePoolLayout';
 import { InputController } from '../input/InputController';
 import { createPlayer } from '../utils/playerSetup';
+import { triggerSignpostTween } from '../utils/signpostUtils';
 
 const BrickLayout = {
   None: 'NONE',
@@ -338,41 +339,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
-   * Shared signpost tween used by both back and forward buttons.
-   *
-   * Stops the player, plays idle, fires a scale pulse on the sign, then calls onComplete to trigger navigation
-   *
-   * Accepts the button and callback as parameters for reusability
-   *
-   * @param button - the signpost image
-   * @param onComplete - navigation callback fired after tween finishes
-   */
-  private triggerSignpostTween(
-    button: Phaser.GameObjects.Image,
-    onComplete: () => void
-  ): void {
-    this.player?.setVelocityX(0);
-    this.player?.play('idle-anim', true);
-
-    this.tweens.add({
-      targets: button,
-      scaleX: 1.6,
-      scaleY: 1.6,
-      duration: 100,
-      ease: 'Sine.In',
-      yoyo: true,
-      onComplete,
-    });
-  }
-
-  /**
    * Fires the signpost tween then navigates to WelcomeScene.
    *
    * Called when player reaches the back button or is already close
    */
   private triggerBackButtonTween(): void {
     if (!this.backButton) return;
-    this.triggerSignpostTween(this.backButton, () => this.navigateBack());
+    triggerSignpostTween(this, this.player, this.backButton, () =>
+      this.navigateBack()
+    );
   }
 
   /**
