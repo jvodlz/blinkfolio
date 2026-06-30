@@ -10,6 +10,7 @@ import {
 import { InputController } from '../input/InputController';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import { createPlayer } from '../utils/playerSetup';
+import { triggerSignpostTween } from '../utils/signpostUtils';
 
 export class WelcomeScene extends Phaser.Scene {
   // Player
@@ -97,39 +98,12 @@ export class WelcomeScene extends Phaser.Scene {
   }
 
   /**
-   * Shared signpost tween.
-   *
-   * Stops player, plays idle, fires a scale pulse on the sign
-   * Calls onComplete to trigger navigation
-   *
-   * @param button - the signpost image
-   * @param onComplete - navigation callback fired after tween finishes
-   */
-  private triggerSignpostTween(
-    button: Phaser.GameObjects.Image,
-    onComplete: () => void
-  ): void {
-    this.player?.setVelocityX(0);
-    this.player?.play('idle-anim', true);
-
-    this.tweens.add({
-      targets: button,
-      scaleX: 1.6,
-      scaleY: 1.6,
-      duration: 100,
-      ease: 'Sine.In',
-      yoyo: true,
-      onComplete,
-    });
-  }
-
-  /**
    * Fires the signpost tween then navigates to MainScene.
    * Called when player reaches the forward button or is already close enough
    */
   private triggerForwardButtonTween(): void {
     if (!this.forwardButton) return;
-    this.triggerSignpostTween(this.forwardButton, () =>
+    triggerSignpostTween(this, this.player, this.forwardButton, () =>
       this.navigateToMainPage()
     );
   }
