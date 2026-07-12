@@ -6,11 +6,15 @@ import {
   PLAYER_SPEED,
   PLAYER_JUMP_VELOCITY,
   PLAYER_BOUNDARY_RATIO,
+  SIGN_EDGE_SIZE,
 } from '../constants';
 import { InputController } from '../input/InputController';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import { createPlayer } from '../utils/playerSetup';
-import { triggerSignpostTween } from '../utils/signpostUtils';
+import {
+  triggerSignpostTween,
+  createSignpostButton,
+} from '../utils/signpostUtils';
 
 export class WelcomeScene extends Phaser.Scene {
   // Player
@@ -133,34 +137,21 @@ export class WelcomeScene extends Phaser.Scene {
     const groundCenterY = height - GROUND_OFFSET_FROM_BOTTOM;
     const groundTopY = groundCenterY - GROUND_HEIGHT / 2;
 
-    this.forwardButton = this.add.image(0, 0, 'arrow-sign');
-    this.forwardButton.setScale(2);
-    this.forwardButton.setDepth(0.5);
-    this.forwardButton.setFlipX(true);
+    const buttonX = width - this.SIGN_EDGE_INSET - SIGN_EDGE_SIZE;
+    const buttonY = groundTopY - SIGN_EDGE_SIZE;
 
-    const buttonX =
-      width - this.SIGN_EDGE_INSET - this.forwardButton.displayWidth / 2;
-    const buttonY = groundTopY - this.forwardButton.displayHeight / 2;
-    this.forwardButton.setPosition(buttonX, buttonY);
     this.forwardButtonX = buttonX;
 
-    this.forwardButton.setInteractive();
-    this.forwardButton.on('pointerdown', () => {
-      if (!this.forwardButton) return;
-
-      // Prevent double-firing if tapped rapidly
-      this.forwardButton.disableInteractive();
-
-      // If player is already at or past the sign, navigate immediately
-      if (
-        this.player &&
-        this.forwardButtonX !== undefined &&
-        this.player.x >= this.forwardButtonX
-      ) {
-        this.triggerForwardButtonTween();
-        return;
-      }
-      this.isWalkingToSign = true;
+    this.forwardButton = createSignpostButton(this, {
+      x: buttonX,
+      y: buttonY,
+      direction: 'right',
+      flipX: true,
+      player: this.player,
+      onTriggerImmediate: () => this.triggerForwardButtonTween(),
+      onWalkToSign: () => {
+        this.isWalkingToSign = true;
+      },
     });
   }
 

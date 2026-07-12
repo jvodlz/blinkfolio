@@ -26,3 +26,8 @@ export const PLAYER_BODY_WIDTH = 10;
 export const PLAYER_BODY_HEIGHT = 15;
 export const PLAYER_BODY_OFFSET_X = 11;
 export const PLAYER_BODY_OFFSET_Y = 17;
+
+// -----
+// SIGN
+// -----
+export const SIGN_EDGE_SIZE = 18;

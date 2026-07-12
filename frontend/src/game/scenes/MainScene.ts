@@ -6,6 +6,7 @@ import {
   PLAYER_SPEED,
   PLAYER_JUMP_VELOCITY,
   PLAYER_BOUNDARY_RATIO,
+  SIGN_EDGE_SIZE,
 } from '../constants';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import {
@@ -59,7 +60,10 @@ import {
 } from '../utils/kiddiePoolLayout';
 import { InputController } from '../input/InputController';
 import { createPlayer } from '../utils/playerSetup';
-import { triggerSignpostTween } from '../utils/signpostUtils';
+import {
+  createSignpostButton,
+  triggerSignpostTween,
+} from '../utils/signpostUtils';
 
 const BrickLayout = {
   None: 'NONE',
@@ -377,34 +381,22 @@ export class MainScene extends Phaser.Scene {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
 
-    this.backButton = this.add.image(0, 0, 'arrow-sign');
-    this.backButton.setScale(2);
-    this.backButton.setDepth(0.5);
+    const buttonX = scaledBrickSize + SIGN_EDGE_SIZE;
+    const buttonY = groundTopY - SIGN_EDGE_SIZE;
 
-    // Sign placement
-    const buttonX = scaledBrickSize + this.backButton.displayWidth / 2;
-    const buttonY = groundTopY - this.backButton.displayHeight / 2;
-    this.backButton.setPosition(buttonX, buttonY);
     this.backButtonX = buttonX;
 
-    this.backButton.setInteractive();
-    this.backButton.on('pointerdown', () => {
-      // Prevent double-firing if tapped rapidly
-      if (!this.backButton) return;
-
-      this.backButton.disableInteractive();
-
-      // If player is at or past the left of arrow signpost, navigate immediately
-      if (
-        this.player &&
-        this.backButtonX !== undefined &&
-        this.player.x <= this.backButtonX
-      ) {
-        this.triggerBackButtonTween();
-        return;
-      }
-      this.handlePoolExit();
-      this.isWalkingToSign = true;
+    this.backButton = createSignpostButton(this, {
+      x: buttonX,
+      y: buttonY,
+      direction: 'left',
+      flipX: false,
+      player: this.player,
+      onTriggerImmediate: () => this.triggerBackButtonTween(),
+      onWalkToSign: () => {
+        this.handlePoolExit();
+        this.isWalkingToSign = true;
+      },
     });
   }
 
