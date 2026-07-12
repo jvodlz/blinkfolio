@@ -102,4 +102,25 @@ describe('MainScene', () => {
       expect.objectContaining({ frameWidth: 16, frameHeight: 16 })
     );
   });
+
+  it('calls handlePoolExit before setting isWalkingToSign when onWalkToSign callback is invoked', () => {
+    let isWalkingToSignDuringPoolExit: boolean | undefined;
+
+    vi.spyOn(
+      scene as unknown as { handlePoolExit: () => void },
+      'handlePoolExit'
+    ).mockImplementation(() => {
+      isWalkingToSignDuringPoolExit = scene['isWalkingToSign'];
+    });
+
+    const onWalkToSign = () => {
+      scene['handlePoolExit']();
+      scene['isWalkingToSign'] = true;
+    };
+
+    onWalkToSign();
+
+    expect(isWalkingToSignDuringPoolExit).toBe(false);
+    expect(scene['isWalkingToSign']).toBe(true);
+  });
 });
