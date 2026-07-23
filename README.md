@@ -12,15 +12,15 @@ Where portfolio meets play
 
 ### Frontend
 - React 19 + TypeScript 5
-- Vite 7 (build tool)
+- Vite 8 (build tool)
 - Phaser.js 3.90+ (game engine)
 - React Router 7 (navigation)
 
 ### Backend
-- Fastify v5 + TypeScript 6
+- Fastify 5 + TypeScript 6
 - PostgreSQL via Supabase (game event counters)
-- Redis via Render (brick cooldown state + rate limiting)
-- Zod v4 (input validation)
+- Valkey via Render (brick cooldown state + rate limiting) - Redis-compatible fork
+- Zod 4 (input validation)
 - Pino (structured logging)
 
 ### DevOps
@@ -33,6 +33,7 @@ Where portfolio meets play
 
 ### Prerequisites
 - Node.js 24+
+- Docker
 
 ### Installation
 ```bash
@@ -47,6 +48,12 @@ npm run dev
 Open http://localhost:5173
 
 ```bash
+# Start local Valkey instance (First time only)
+docker run -d --name blinkfolio-redis -p 6379:6379 valkey/valkey:8-alpine
+
+# Start local Valkey instance (Every other time: start existing container)
+docker start blinkfolio-redis
+
 # Install backend dependencies
 cd backend
 npm install
@@ -71,6 +78,8 @@ All game assets are CC0 licensed (public domain).
 
 ## Development Approach
 
-- **TDD (Test-Driven Development):** Tests written before implementation for React components and pure logic functions
-- **Security-first:** Helmet, CORS allowlist, Redis-backed rate limiting, Zod input validation, structured logging
+- **TDD (Test-Driven Development):** Tests written before implementation for React components and pure logic functions, and backend route handlers and schemas
+- **Smoke tests:** Lightweight post-deploy checks against the live backend
+- **Manual testing:** Phaser gameplay and game mechanics, verified on real devices for touch-specific behaviour
+- **Security-first:** Helmet, CORS allowlist, rate limiting, Zod input validation, structured logging
 
