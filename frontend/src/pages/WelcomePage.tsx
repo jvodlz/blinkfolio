@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTypingAnimation } from '../hooks/useTypingAnimation';
 import { Game } from '../game/Game';
 import { WelcomeScene } from '../game/scenes/WelcomeScene';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import './WelcomePage.css';
 import { MOBILE_MAX_WIDTH } from '../game/constants';
 
