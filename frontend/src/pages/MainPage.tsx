@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { createPortal } from 'react-dom';
 import { Game } from '../game/Game';
 import { MainScene } from '../game/scenes/MainScene';
