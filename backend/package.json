@@ -41,7 +41,7 @@
     "node-pg-migrate": "^8.0.4",
     "pg": "^8.22.0",
     "prettier": "^3.9.6",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.65.0",
     "vitest": "^4.1.7"
   }
