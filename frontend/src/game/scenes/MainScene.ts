@@ -89,7 +89,7 @@ export class MainScene extends Phaser.Scene {
   private readonly BRICK_INTERACTIVE_SCALE = 2.2;
   private readonly BRICK_SIMPLE_NATIVE_SIZE = 64;
   private readonly BRICK_ABOVE_CARD_OFFSET = 70;
-  private readonly BRICK_ABOVE_GROUND_OFFSET = 75;
+  private readonly BRICK_ABOVE_GROUND_OFFSET = 70;
 
   // Items
   private readonly FLOWER_SCALE = 2;
