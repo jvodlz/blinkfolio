@@ -22,6 +22,9 @@ export const PLAYER_SPEED = 200;
 export const PLAYER_JUMP_VELOCITY = -400;
 export const PLAYER_BOUNDARY_RATIO = 0.33; // left/right visible boundary ratio
 
+export const PLAYER_FRAME_WIDTH = 32;
+export const PLAYER_FRAME_HEIGHT = 32;
+
 export const PLAYER_BODY_WIDTH = 10;
 export const PLAYER_BODY_HEIGHT = 15;
 export const PLAYER_BODY_OFFSET_X = 11;

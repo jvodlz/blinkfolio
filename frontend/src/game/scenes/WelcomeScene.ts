@@ -12,6 +12,10 @@ import { InputController } from '../input/InputController';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import { createPlayer } from '../utils/playerSetup';
 import {
+  loadPlayerAssets,
+  loadSignpostAssets,
+} from '../utils/sharedAssetLoader';
+import {
   triggerSignpostTween,
   createSignpostButton,
 } from '../utils/signpostUtils';
@@ -40,21 +44,8 @@ export class WelcomeScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.spritesheet('idle', '/assets/characters/idle.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet('walk', '/assets/characters/walk.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet('jump', '/assets/characters/jump.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-
-    // Arrow Signpost
-    this.load.image('arrow-sign', '/assets/ui/arrow-left.png');
+    loadPlayerAssets(this);
+    loadSignpostAssets(this);
   }
 
   create() {
