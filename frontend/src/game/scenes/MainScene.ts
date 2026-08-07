@@ -105,7 +105,7 @@ export class MainScene extends Phaser.Scene {
   // Brick breakpoint thresholds
   private readonly BP_WIDTH_MIN = 1028;
   private readonly BP_HEIGHT_BOTH = 945;
-  private readonly BP_HEIGHT_LOWER = 827;
+  private readonly BP_HEIGHT_LOWER = 824;
 
   // Ladder
   private readonly LADDER_CLIMB_SPEED = 150;
