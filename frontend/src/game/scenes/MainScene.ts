@@ -6,6 +6,8 @@ import {
   PLAYER_SPEED,
   PLAYER_JUMP_VELOCITY,
   PLAYER_BOUNDARY_RATIO,
+  PLAYER_FRAME_WIDTH,
+  PLAYER_FRAME_HEIGHT,
   SIGN_EDGE_SIZE,
 } from '../constants';
 import { registerPlayerAnimations } from '../utils/animationSetup';
@@ -60,6 +62,10 @@ import {
 } from '../utils/kiddiePoolLayout';
 import { InputController } from '../input/InputController';
 import { createPlayer } from '../utils/playerSetup';
+import {
+  loadPlayerAssets,
+  loadSignpostAssets,
+} from '../utils/sharedAssetLoader';
 import {
   createSignpostButton,
   triggerSignpostTween,
@@ -196,22 +202,11 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload() {
-    // Player
-    this.load.spritesheet('idle', '/assets/characters/idle.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet('walk', '/assets/characters/walk.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
-    this.load.spritesheet('jump', '/assets/characters/jump.png', {
-      frameWidth: 32,
-      frameHeight: 32,
-    });
+    loadPlayerAssets(this);
+
     this.load.spritesheet('faint', '/assets/characters/faint.png', {
-      frameWidth: 32,
-      frameHeight: 32,
+      frameWidth: PLAYER_FRAME_WIDTH,
+      frameHeight: PLAYER_FRAME_HEIGHT,
     });
 
     // Brick
@@ -241,8 +236,7 @@ export class MainScene extends Phaser.Scene {
       graphics.destroy();
     }
 
-    // Arrow Signpost
-    this.load.image('arrow-sign', '/assets/ui/arrow-left.png');
+    loadSignpostAssets(this);
   }
 
   create() {
