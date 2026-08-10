@@ -50,7 +50,6 @@
   display: block;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   z-index: 10;
   padding-bottom: 140px;
@@ -91,7 +90,6 @@
   box-sizing: border-box;
 
   pointer-events: auto;
-  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
