@@ -10,6 +10,7 @@ import {
   PLAYER_FRAME_HEIGHT,
   SIGN_EDGE_SIZE,
   FLOWER_KEYS,
+  FLOWER_ABOVE_BRICK_OFFSET,
 } from '../constants';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import {
@@ -992,7 +993,7 @@ export class MainScene extends Phaser.Scene {
     const flowerKey = randomFlowerKey(Math.random, FLOWER_KEYS);
     const flower = this.add.image(
       brick.x,
-      brick.y - scaledBrickSize,
+      brick.y - scaledBrickSize + FLOWER_ABOVE_BRICK_OFFSET,
       flowerKey
     );
 
