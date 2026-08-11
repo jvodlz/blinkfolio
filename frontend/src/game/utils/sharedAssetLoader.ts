@@ -1,5 +1,9 @@
 import Phaser from 'phaser';
-import { PLAYER_FRAME_WIDTH, PLAYER_FRAME_HEIGHT } from '../constants';
+import {
+  PLAYER_FRAME_WIDTH,
+  PLAYER_FRAME_HEIGHT,
+  FLOWER_KEYS,
+} from '../constants';
 
 /**
  * Loads the player's shared spritesheets: idle, walk, jump.
@@ -27,4 +31,16 @@ export function loadPlayerAssets(scene: Phaser.Scene): void {
  */
 export function loadSignpostAssets(scene: Phaser.Scene): void {
   scene.load.image('arrow-sign', '/assets/ui/arrow-left.png');
+}
+
+/**
+ * Loads all flower variant images used for random flower spawns.
+ *
+ * Note:
+ * - MainScene-only despite living in this "shared" loader (see FLOWER_KEYS in constants.ts for the full key list)
+ */
+export function loadFlowerAssets(scene: Phaser.Scene): void {
+  FLOWER_KEYS.forEach((key) => {
+    scene.load.image(key, `/assets/items/${key}.png`);
+  });
 }

@@ -218,7 +218,7 @@ export class MainScene extends Phaser.Scene {
     );
 
     // Item
-    this.load.image('flower', '/assets/items/flower.png');
+    this.load.image('flower_1', '/assets/items/flower_1.png');
 
     // Enemy
     this.load.spritesheet('enemy', '/assets/enemies/enemy-simple.png', {
@@ -983,7 +983,11 @@ export class MainScene extends Phaser.Scene {
   private spawnFlower(brick: Phaser.GameObjects.Image): void {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
-    const flower = this.add.image(brick.x, brick.y - scaledBrickSize, 'flower');
+    const flower = this.add.image(
+      brick.x,
+      brick.y - scaledBrickSize,
+      'flower_1'
+    );
 
     flower.setScale(this.FLOWER_SCALE);
 
