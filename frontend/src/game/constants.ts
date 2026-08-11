@@ -47,3 +47,5 @@ export const FLOWER_KEYS = [
   'flower_6',
 ] as const;
 export type FlowerKey = (typeof FLOWER_KEYS)[number];
+
+export const FLOWER_ABOVE_BRICK_OFFSET = 2;
