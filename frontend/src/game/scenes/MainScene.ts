@@ -9,6 +9,7 @@ import {
   PLAYER_FRAME_WIDTH,
   PLAYER_FRAME_HEIGHT,
   SIGN_EDGE_SIZE,
+  FLOWER_KEYS,
 } from '../constants';
 import { registerPlayerAnimations } from '../utils/animationSetup';
 import {
@@ -25,7 +26,11 @@ import {
   markCoolingDown,
   clearCooldown,
 } from '../utils/brickCooldown';
-import { randomSpawnType, randomDirection } from '../utils/spawnUtils';
+import {
+  randomSpawnType,
+  randomDirection,
+  randomFlowerKey,
+} from '../utils/spawnUtils';
 import {
   generateLadderDecision,
   resolveLadderLayout,
@@ -65,6 +70,7 @@ import { createPlayer } from '../utils/playerSetup';
 import {
   loadPlayerAssets,
   loadSignpostAssets,
+  loadFlowerAssets,
 } from '../utils/sharedAssetLoader';
 import {
   createSignpostButton,
@@ -218,7 +224,7 @@ export class MainScene extends Phaser.Scene {
     );
 
     // Item
-    this.load.image('flower', '/assets/items/flower.png');
+    loadFlowerAssets(this);
 
     // Enemy
     this.load.spritesheet('enemy', '/assets/enemies/enemy-simple.png', {
@@ -983,7 +989,12 @@ export class MainScene extends Phaser.Scene {
   private spawnFlower(brick: Phaser.GameObjects.Image): void {
     const scaledBrickSize =
       this.BRICK_SIMPLE_NATIVE_SIZE * this.BRICK_SIMPLE_SCALE;
-    const flower = this.add.image(brick.x, brick.y - scaledBrickSize, 'flower');
+    const flowerKey = randomFlowerKey(Math.random, FLOWER_KEYS);
+    const flower = this.add.image(
+      brick.x,
+      brick.y - scaledBrickSize,
+      flowerKey
+    );
 
     flower.setScale(this.FLOWER_SCALE);
 

@@ -34,3 +34,16 @@ export const PLAYER_BODY_OFFSET_Y = 17;
 // SIGN
 // -----
 export const SIGN_EDGE_SIZE = 18;
+
+// -------
+// FLOWER
+// -------
+export const FLOWER_KEYS = [
+  'flower_1',
+  'flower_2',
+  'flower_3',
+  'flower_4',
+  'flower_5',
+  'flower_6',
+] as const;
+export type FlowerKey = (typeof FLOWER_KEYS)[number];

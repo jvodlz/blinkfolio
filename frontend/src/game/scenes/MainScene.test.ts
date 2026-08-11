@@ -93,8 +93,8 @@ describe('MainScene', () => {
 
     // Items
     expect(mockLoad.image).toHaveBeenCalledWith(
-      'flower',
-      '/assets/items/flower.png'
+      'flower_1',
+      '/assets/items/flower_1.png'
     );
     expect(mockLoad.spritesheet).toHaveBeenCalledWith(
       'enemy',
