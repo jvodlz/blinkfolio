@@ -33,7 +33,10 @@ export function randomDirection(rng: () => number): SpawnDirection {
  * @param rng - random number generator returning a value in [0.1)
  * @param keys - pool of flower texture keys to pick from
  */
-export function randomFlowerKey(rng: () => number, keys: readonly string[]): string {
+export function randomFlowerKey(
+  rng: () => number,
+  keys: readonly string[]
+): string {
   const index = Math.floor(rng() * keys.length);
   return keys[index];
 }
