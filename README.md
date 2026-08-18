@@ -14,12 +14,12 @@ Where portfolio meets play
 - React 19 + TypeScript 5
 - Vite 8 (build tool)
 - Phaser.js 3.90+ (game engine)
-- React Router 7 (navigation)
+- React Router 8 (navigation)
 
 ### Backend
 - Fastify 5 + TypeScript 6
 - PostgreSQL via Supabase (game event counters)
-- Valkey via Render (brick cooldown state + rate limiting) - Redis-compatible fork
+- Valkey via Render (brick cooldown state) - Redis-compatible fork
 - Zod 4 (input validation)
 - Pino (structured logging)
 
